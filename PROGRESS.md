@@ -6,6 +6,7 @@
 
 - [x] 同步官方材料（sl/assignments/materials，固定 commit 见 UPSTREAM.md）
 - [x] 建立 18 讲中文笔记初稿
+- [x] 笔记深度优化（速览卡、深入推导、面试追问链、自测题；`python notes/check_notes.py` 通过）
 - [x] 建立官方/社区资源索引与实验卡片
 - [x] 建立模板、检查脚本与 `solutions/` 工作区
 - [ ] 跑通 PyTorch + MuJoCo/Gymnasium 本地环境

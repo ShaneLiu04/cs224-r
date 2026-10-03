@@ -17,9 +17,10 @@ W&B、PPO/IQL/RLOO）。本仓库把三件事放在一起：
 
 1. **官方材料离线可用**：三代 slides、全部题面 PDF/LaTeX、starter code（含专家数据与
    D4RL 小数据集），固定上游 commit，见 [UPSTREAM.md](UPSTREAM.md)；
-2. **中文笔记把算法串起来**：每讲按「目标 → 推导 → shape/复杂度 → 实现映射 → 易错点 →
-   高频问题」组织，公式可直接手推，例如 policy gradient 的 causality 化简、
-   AWR/AWAC 与 IQL 的 expectile 设计、DPO 的隐式奖励推导、GAE 的递推；
+2. **中文笔记把算法串起来**：18 讲每讲含「摘要 + 一页速览卡 + 核心概念 + 关键推导 +
+   深入推导 + 实现映射 + 易错点与反例 + 面试追问链 + 自测题」，L02–L17 附完整数学推导，
+   公式可直接手推，例如 policy gradient 的 causality 化简、AWR/AWAC 与 IQL 的
+   expectile 设计、DPO 的隐式奖励推导、GAE 的递推；
 3. **作业可落地**：每份作业给出 TODO 地图、调试顺序、常见 bug 与验收指标，
    并在 `solutions/` 留出你自己的实现工作区。
 
