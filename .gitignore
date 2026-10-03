@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Build and editor files
+build/
+dist/
+*.egg-info/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+
+# My own training artifacts (keep official starter-code fixtures)
+solutions/**/data/
+solutions/**/datasets/
+solutions/**/checkpoints/
+solutions/**/outputs/
+solutions/**/runs/
+solutions/**/wandb/
+solutions/**/*.ckpt
+solutions/**/*.pt
+solutions/**/*.pth
+solutions/**/*.safetensors
+solutions/**/*.avi
+
+# Logs and archives produced locally
+*.log
+*.tar
+*.tar.gz
+
+# TS/JS build noise from the official site mirror (not copied, but just in case)
+node_modules/
+
+# Keep small official fixtures and datasets that upstream assignments require.
+!assignments/**/*.pkl
+!assignments/**/*.npz
+!assignments/**/*.json

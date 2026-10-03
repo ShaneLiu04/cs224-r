@@ -1,0 +1,83 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "default-project"
+version = "0.1.0"
+description = "Training for Default Project (224r)"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "Anikait Singh", email = "asingh15@stanford.edu"}
+]
+keywords = ["reasoning", "llm", "evaluation", "dataset-generation"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "openai>=1.0.0",
+    "requests>=2.28.0",
+    "diskcache>=5.6.0",
+    "together>=1.0.0",
+    "tenacity>=8.0.0",
+    "tqdm>=4.65.0",
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "datasets>=2.14.0",
+    "transformers>=4.30.0",
+    "nest-asyncio>=1.5.0",
+    "modal",
+    "jupyter",
+    "ipython",
+    "wandb",
+    "accelerate",
+    "scipy",
+    "seaborn",
+    "ray[data,train,tune,serve]"
+]
+
+[project.optional-dependencies]
+sampling = [
+    "vllm>=0.4.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "ruff>=0.1.0",
+]
+all = [
+    "default-project[sampling,dev]",
+]
+
+[project.urls]
+Homepage = "https://github.com/asingh15/arc-clean"
+Repository = "https://github.com/asingh15/arc-clean"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["llm_wrapper*", "evaluation*", "sampling*", "dataset_generation*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.md"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

@@ -1,0 +1,94 @@
+
+\documentclass[12pt]{article}
+\usepackage{fullpage,enumitem,amsmath,amssymb,graphicx,url,hyperref}
+\usepackage{sectsty}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+}
+
+\sectionfont{\fontsize{15}{20}\selectfont}
+
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator{\E}{\mathbb{E}}
+\usepackage{tgpagella}
+\usepackage{tcolorbox}
+\usepackage{forest}
+\usepackage{booktabs}
+
+
+
+\begin{document}
+
+\begin{center}
+{\Large \textbf{CS224R Spring 2026 Homework 2 \\ Online Reinforcement Learning}}
+\\ {\large Due 4/24/2026}
+
+\begin{tabular}{rl}
+SUNet ID: & $\hspace{6cm}$\\
+Name: & \\
+Collaborators: & 
+\end{tabular}
+\end{center}
+
+\noindent By turning in this assignment, I agree by the Stanford honor code and declare
+that all of this is my own work.
+
+
+\section*{Problem 1: [3 points]}
+
+
+\subsection*{Your Tasks}
+
+
+    \textbf{\color{red} For each scenario, report the whether it reaches a goal, and if so which one it reaches. Give a one sentence explanation for why it learned that trajectory in each scenario.}
+
+
+
+
+
+
+
+\newpage
+
+
+\section*{Problem 2: [3 points]}
+ 
+\textbf{\color{red}Attach a screenshot of the plot \texttt{eval/episode\_success} for this run up to 1 million steps from Wandb. }
+
+
+
+
+
+
+
+
+\newpage
+
+\section*{Problem 3: [4 points]}
+
+
+\noindent\textbf{\color{red}Attach a screenshot of the plot ``eval/episode\_success" for the off-policy run from Wandb up to 100k steps. You should achieve a success rate of at least 90\% before 100K environment steps.}
+
+\newpage
+
+
+
+\noindent\textbf{\color{red}Attach a screenshot of the plot ``eval/episode\_success" for the off-policy UTD 5 run up to 40k steps and compare it to the previous question. Provide a brief, one-sentence explanation of why we observe these effects.}
+
+\newpage
+
+
+
+\noindent Compare the PPO learning curve (\texttt{eval/episode\_success}) from Problem 2 with the actor-critic curve from Problem 3 (2 critics, UTD=1). \\
+ 
+\noindent \textbf{\color{red}In 3--5 sentences, explain at least two concrete differences you observe between the two algorithms in terms of sample efficiency and final performance. Justify each observed difference by connecting it to a specific property of each algorithm.}
+
+
+
+%\bibliography{Homework1/references}
+%\bibliographystyle{unsrt}
+
+\end{document}
