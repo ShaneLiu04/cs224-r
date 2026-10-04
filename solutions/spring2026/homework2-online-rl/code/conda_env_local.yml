@@ -1,0 +1,37 @@
+name: cs224r-hw2-local
+channels:
+  - defaults
+  - conda-forge
+  - nvidia
+  - pytorch
+dependencies:
+  - python=3.10
+  - pip=26.0.1
+  - numpy=1.24
+  - absl-py=0.13.0
+  - pyparsing=2.4.7
+  - jupyterlab=3.0.14
+  - scikit-image>0.18.1
+  - nvidia::cudatoolkit=11.5
+  - pytorch::pytorch
+  - pytorch::torchvision
+  - pytorch::torchaudio
+  - pandas>=1.4.0,<2.0
+  - matplotlib>=3.5.0
+  - opencv>=4.6.0
+  - pip:
+    - termcolor==1.1.0
+    - dm_control
+    - gym==0.26.2
+    - tb-nightly
+    - wandb
+    - Cython==0.29.33
+    - metaworld
+    - imageio>=2.33.0   
+    - imageio-ffmpeg>=0.4.4
+    - hydra-core==1.1.0
+    - hydra-submitit-launcher==1.1.5
+    - ipdb==0.13.9
+    - yapf==0.31.0
+    - mujoco_py==2.1.2.14
+    - scikit-learn 

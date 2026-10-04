@@ -274,6 +274,22 @@ episode 评估，并额外报告 Flow Matching 的 Euler steps 质量--时延消
 该目录包含个人作业实现，仅用于自学与求职知识整理。正在修读课程的学习者应遵守课程
 honor code，不应直接使用或公开提交其中的 solution。
 
+## Homework 2 完整复现
+
+Spring 2026 Homework 2 的实现与实验位于：
+
+- [实现与复现说明](solutions/spring2026/homework2-online-rl/README.md)
+- [Q-learning、PPO 与 Actor-Critic 代码](solutions/spring2026/homework2-online-rl/code/)
+- [原始指标与实验图](solutions/spring2026/homework2-online-rl/artifacts/)
+- [作业学术报告（PDF）](solutions/spring2026/homework2-online-rl/reports/assignment_report/main.pdf)
+- [Online RL 面试知识总结（PDF）](solutions/spring2026/homework2-online-rl/reports/interview_guide/main.pdf)
+
+实验在 Meta-World hammer 稀疏奖励任务上比较 PPO、2-critic/UTD=1 actor-critic 与
+10-critic/UTD=5 actor-critic，并包含 GAE lambda、Gridworld reward design、样本效率、
+跨 seed 稳定性和资源利用率分析。所有曲线由本地 CSV 原始指标生成。
+
+![Homework 2 学习曲线](solutions/spring2026/homework2-online-rl/artifacts/figures/main_learning_curves.png)
+
 ---
 
 ## 引用与学术诚信

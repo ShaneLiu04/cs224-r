@@ -1,0 +1,100 @@
+{
+  "ppo": {
+    "seeds": 5,
+    "best_mean": 0.23200000000000004,
+    "best_std": 0.23091123835794566,
+    "final_mean": 0.08,
+    "threshold_reached": 2,
+    "threshold_frame_median": 0.0
+  },
+  "off_base": {
+    "seeds": 5,
+    "best_mean": 0.384,
+    "best_std": 0.32416045409642424,
+    "final_mean": 0.12,
+    "threshold_reached": 1,
+    "threshold_frame_median": 68000.0
+  },
+  "off_utd5": {
+    "seeds": 5,
+    "best_mean": 0.808,
+    "best_std": 0.36375816142046896,
+    "final_mean": 0.732,
+    "threshold_reached": 4,
+    "threshold_frame_median": 27000.0
+  },
+  "gae_ablation": {
+    "0.0": [
+      {
+        "run": "ppo_gae0p0_seed101",
+        "best_success": 0.45,
+        "final_success": 0.0,
+        "auc": 0.12904040404040404,
+        "threshold_frame": 0.0,
+        "wall_seconds": 1977.2533729076383
+      },
+      {
+        "run": "ppo_gae0p0_seed102",
+        "best_success": 0.1,
+        "final_success": 0.0,
+        "auc": 0.02297979797979798,
+        "threshold_frame": null,
+        "wall_seconds": 1979.948344230652
+      }
+    ],
+    "0.95": [
+      {
+        "run": "ppo_gae0p95_seed101",
+        "best_success": 0.5,
+        "final_success": 0.45,
+        "auc": 0.27070707070707073,
+        "threshold_frame": 0.0,
+        "wall_seconds": 1996.4833900928495
+      },
+      {
+        "run": "ppo_gae0p95_seed102",
+        "best_success": 0.25,
+        "final_success": 0.25,
+        "auc": 0.0702020202020202,
+        "threshold_frame": 174000.0,
+        "wall_seconds": 1990.439379930496
+      }
+    ],
+    "0.99": [
+      {
+        "run": "ppo_gae0p99_seed101",
+        "best_success": 0.45,
+        "final_success": 0.4,
+        "auc": 0.24065656565656565,
+        "threshold_frame": 0.0,
+        "wall_seconds": 1979.876817703247
+      },
+      {
+        "run": "ppo_gae0p99_seed102",
+        "best_success": 0.35,
+        "final_success": 0.25,
+        "auc": 0.11565656565656565,
+        "threshold_frame": 78000.0,
+        "wall_seconds": 1982.1411254405973
+      }
+    ],
+    "1.0": [
+      {
+        "run": "ppo_gae1p0_seed101",
+        "best_success": 0.45,
+        "final_success": 0.45,
+        "auc": 0.2474747474747475,
+        "threshold_frame": 0.0,
+        "wall_seconds": 1970.7984664440155
+      },
+      {
+        "run": "ppo_gae1p0_seed102",
+        "best_success": 0.35,
+        "final_success": 0.25,
+        "auc": 0.0904040404040404,
+        "threshold_frame": 134000.0,
+        "wall_seconds": 1975.0125064849851
+      }
+    ]
+  }
+}

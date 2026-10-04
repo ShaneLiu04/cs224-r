@@ -1,0 +1,573 @@
+{
+  "scenario_definitions": [
+    {
+      "name": "scenario_1",
+      "goal_1_reward": 10.0,
+      "goal_2_reward": 5.0,
+      "step_reward": -1.0,
+      "expected_outcome": "goal_1",
+      "episodes": 5000,
+      "horizon": 20,
+      "alpha": 0.2,
+      "gamma": 0.98,
+      "epsilon_start": 0.4,
+      "epsilon_end": 0.02,
+      "seed": 0
+    },
+    {
+      "name": "scenario_2",
+      "goal_1_reward": 10.0,
+      "goal_2_reward": 5.0,
+      "step_reward": -2.0,
+      "expected_outcome": "goal_2",
+      "episodes": 5000,
+      "horizon": 20,
+      "alpha": 0.2,
+      "gamma": 0.98,
+      "epsilon_start": 0.4,
+      "epsilon_end": 0.02,
+      "seed": 0
+    },
+    {
+      "name": "scenario_3",
+      "goal_1_reward": 1.0,
+      "goal_2_reward": 1.0,
+      "step_reward": 1.0,
+      "expected_outcome": "timeout",
+      "episodes": 5000,
+      "horizon": 20,
+      "alpha": 0.2,
+      "gamma": 0.98,
+      "epsilon_start": 0.4,
+      "epsilon_end": 0.02,
+      "seed": 0
+    }
+  ],
+  "official_runs": [
+    {
+      "scenario": "scenario_1",
+      "seed": 0,
+      "episodes": 5000,
+      "alpha": 0.2,
+      "gamma": 0.98,
+      "expected_outcome": "goal_1",
+      "observed_outcome": "goal_1",
+      "trajectory": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          3,
+          0
+        ],
+        [
+          3,
+          1
+        ],
+        [
+          4,
+          1
+        ],
+        [
+          4,
+          2
+        ],
+        [
+          4,
+          3
+        ]
+      ],
+      "actions": [
+        "right",
+        "right",
+        "right",
+        "up",
+        "right",
+        "up",
+        "up"
+      ],
+      "total_reward": 3.0,
+      "start_q_values": [
+        1.219,
+        2.265,
+        1.219,
+        2.265
+      ]
+    },
+    {
+      "scenario": "scenario_2",
+      "seed": 0,
+      "episodes": 5000,
+      "alpha": 0.2,
+      "gamma": 0.98,
+      "expected_outcome": "goal_2",
+      "observed_outcome": "goal_2",
+      "trajectory": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          3,
+          0
+        ],
+        [
+          4,
+          0
+        ]
+      ],
+      "actions": [
+        "right",
+        "right",
+        "right",
+        "right"
+      ],
+      "total_reward": -3.0,
+      "start_q_values": [
+        -4.996,
+        -3.057,
+        -4.996,
+        -4.329
+      ]
+    },
+    {
+      "scenario": "scenario_3",
+      "seed": 0,
+      "episodes": 5000,
+      "alpha": 0.2,
+      "gamma": 0.98,
+      "expected_outcome": "timeout",
+      "observed_outcome": "timeout",
+      "trajectory": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "actions": [
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left"
+      ],
+      "total_reward": 20.0,
+      "start_q_values": [
+        50.0,
+        50.0,
+        50.0,
+        50.0
+      ]
+    }
+  ],
+  "sample_efficiency": {
+    "scenario_1": {
+      "50": {
+        "expected_outcome_rate": 0.0,
+        "reward_mean": 1.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "100": {
+        "expected_outcome_rate": 0.0,
+        "reward_mean": 1.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "250": {
+        "expected_outcome_rate": 0.0,
+        "reward_mean": 1.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "500": {
+        "expected_outcome_rate": 0.03333333333333333,
+        "reward_mean": 1.0666666666666667,
+        "reward_std": 0.3590109871423002,
+        "n": 30
+      },
+      "1000": {
+        "expected_outcome_rate": 0.3,
+        "reward_mean": 1.6,
+        "reward_std": 0.9165151389911679,
+        "n": 30
+      },
+      "2000": {
+        "expected_outcome_rate": 0.6333333333333333,
+        "reward_mean": 2.2666666666666666,
+        "reward_std": 0.9637888196533972,
+        "n": 30
+      },
+      "5000": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": 3.0,
+        "reward_std": 0.0,
+        "n": 30
+      }
+    },
+    "scenario_2": {
+      "50": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": -3.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "100": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": -3.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "250": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": -3.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "500": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": -3.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "1000": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": -3.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "2000": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": -3.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "5000": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": -3.0,
+        "reward_std": 0.0,
+        "n": 30
+      }
+    },
+    "scenario_3": {
+      "50": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": 20.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "100": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": 20.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "250": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": 20.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "500": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": 20.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "1000": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": 20.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "2000": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": 20.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "5000": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": 20.0,
+        "reward_std": 0.0,
+        "n": 30
+      }
+    }
+  },
+  "alpha_ablation": {
+    "0.05": {
+      "scenario_1": {
+        "expected_outcome_rate": 0.0,
+        "reward_mean": 1.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "scenario_2": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": -3.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "scenario_3": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": 20.0,
+        "reward_std": 0.0,
+        "n": 30
+      }
+    },
+    "0.1": {
+      "scenario_1": {
+        "expected_outcome_rate": 0.0,
+        "reward_mean": 1.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "scenario_2": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": -3.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "scenario_3": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": 20.0,
+        "reward_std": 0.0,
+        "n": 30
+      }
+    },
+    "0.2": {
+      "scenario_1": {
+        "expected_outcome_rate": 0.3,
+        "reward_mean": 1.6,
+        "reward_std": 0.9165151389911679,
+        "n": 30
+      },
+      "scenario_2": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": -3.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "scenario_3": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": 20.0,
+        "reward_std": 0.0,
+        "n": 30
+      }
+    },
+    "0.5": {
+      "scenario_1": {
+        "expected_outcome_rate": 0.9333333333333333,
+        "reward_mean": 2.8666666666666667,
+        "reward_std": 0.49888765156985887,
+        "n": 30
+      },
+      "scenario_2": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": -3.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "scenario_3": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": 20.0,
+        "reward_std": 0.0,
+        "n": 30
+      }
+    }
+  },
+  "gamma_ablation": {
+    "0.9": {
+      "scenario_1": {
+        "expected_outcome_rate": 0.0,
+        "reward_mean": 1.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "scenario_2": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": -3.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "scenario_3": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": 20.0,
+        "reward_std": 0.0,
+        "n": 30
+      }
+    },
+    "0.95": {
+      "scenario_1": {
+        "expected_outcome_rate": 0.3,
+        "reward_mean": 1.6,
+        "reward_std": 0.9165151389911679,
+        "n": 30
+      },
+      "scenario_2": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": -3.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "scenario_3": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": 20.0,
+        "reward_std": 0.0,
+        "n": 30
+      }
+    },
+    "0.98": {
+      "scenario_1": {
+        "expected_outcome_rate": 0.3,
+        "reward_mean": 1.6,
+        "reward_std": 0.9165151389911679,
+        "n": 30
+      },
+      "scenario_2": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": -3.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "scenario_3": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": 20.0,
+        "reward_std": 0.0,
+        "n": 30
+      }
+    },
+    "0.999": {
+      "scenario_1": {
+        "expected_outcome_rate": 0.23333333333333334,
+        "reward_mean": 1.4666666666666666,
+        "reward_std": 0.8459051693633013,
+        "n": 30
+      },
+      "scenario_2": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": -3.0,
+        "reward_std": 0.0,
+        "n": 30
+      },
+      "scenario_3": {
+        "expected_outcome_rate": 1.0,
+        "reward_mean": 20.0,
+        "reward_std": 0.0,
+        "n": 30
+      }
+    }
+  }
+}
