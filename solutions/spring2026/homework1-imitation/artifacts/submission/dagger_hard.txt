@@ -1,0 +1,20 @@
+Method: DAgger
+Environment: hard
+Metric: episode length over 50 evaluation episodes per seed
+Seeds: 11, 22, 33, 44, 55
+Aggregate: 363.4 +/- 13.7 (mean +/- between-seed SD)
+Success rate: 0.0%
+
+Per-seed results:
+  seed 11: 379.1 +/- 27.5, success=0.0%
+  seed 22: 371.0 +/- 51.7, success=0.0%
+  seed 33: 344.3 +/- 61.1, success=0.0%
+  seed 44: 355.6 +/- 57.2, success=0.0%
+  seed 55: 367.1 +/- 43.5, success=0.0%
+
+DAgger per-round means:
+  seed 11: 284.2, 338.1, 383.9, 259.6, 311.0
+  seed 22: 297.6, 391.9, 289.9, 308.8, 305.9
+  seed 33: 281.7, 337.8, 298.0, 320.7, 330.3
+  seed 44: 307.3, 313.2, 317.5, 341.9, 370.8
+  seed 55: 291.4, 321.7, 375.8, 301.6, 322.7

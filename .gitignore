@@ -11,6 +11,14 @@ venv/
 build/
 dist/
 *.egg-info/
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.out
+*.synctex.gz
+*.xdv
 .idea/
 .vscode/
 .DS_Store

@@ -1,0 +1,13 @@
+Method: Behavior Cloning (MSE)
+Environment: easy
+Metric: episode length over 50 evaluation episodes per seed
+Seeds: 11, 22, 33, 44, 55
+Aggregate: 962.0 +/- 17.8 (mean +/- between-seed SD)
+Success rate: 89.6%
+
+Per-seed results:
+  seed 11: 939.2 +/- 161.4, success=82.0%
+  seed 22: 952.0 +/- 152.0, success=88.0%
+  seed 33: 960.3 +/- 142.8, success=90.0%
+  seed 44: 983.7 +/- 89.3, success=94.0%
+  seed 55: 974.9 +/- 107.5, success=94.0%

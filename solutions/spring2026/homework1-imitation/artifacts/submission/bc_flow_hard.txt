@@ -1,0 +1,13 @@
+Method: Conditional Flow Matching
+Environment: hard
+Metric: episode length over 50 evaluation episodes per seed
+Seeds: 11, 22, 33, 44, 55
+Aggregate: 997.1 +/- 6.4 (mean +/- between-seed SD)
+Success rate: 99.6%
+
+Per-seed results:
+  seed 11: 1000.0 +/- 0.0, success=100.0%
+  seed 22: 1000.0 +/- 0.0, success=100.0%
+  seed 33: 1000.0 +/- 0.0, success=100.0%
+  seed 44: 1000.0 +/- 0.0, success=100.0%
+  seed 55: 985.6 +/- 100.7, success=98.0%

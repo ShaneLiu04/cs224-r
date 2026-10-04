@@ -253,6 +253,27 @@ pip install modal wandb && modal setup
 官方 2026 版**不保证**本地 GPU 支持（HW2/HW3 要求 Modal），本地只建议开发调试；
 受限环境下的替代方案见 [resources/tools.md](resources/tools.md)。
 
+## Homework 1 完整复现
+
+Spring 2026 Homework 1 已在独立 solution workspace 中完成：
+
+- [实现与复现说明](solutions/spring2026/homework1-imitation/README.md)
+- [BC、Flow Matching 与 DAgger 代码](solutions/spring2026/homework1-imitation/code/)
+- [单元测试](solutions/spring2026/homework1-imitation/code/tests/)
+- [原始指标与实验图](solutions/spring2026/homework1-imitation/artifacts/)
+- [作业学术报告（PDF）](solutions/spring2026/homework1-imitation/reports/assignment_report/main.pdf)
+- [面试知识总结（PDF）](solutions/spring2026/homework1-imitation/reports/interview_guide/main.pdf)
+
+实验在 NVIDIA RTX 6000D 上运行 5 个独立随机种子。每个方法、每个 seed 使用 50 个
+episode 评估，并额外报告 Flow Matching 的 Euler steps 质量--时延消融、action chunk
+重规划频率消融、DAgger 逐轮曲线、训练收敛与 expert action 多峰分布。所有报告数字与
+图片由逐 seed JSON/NPZ 原始指标生成，不手工录入。
+
+![Homework 1 方法比较](solutions/spring2026/homework1-imitation/artifacts/figures/method_comparison.png)
+
+该目录包含个人作业实现，仅用于自学与求职知识整理。正在修读课程的学习者应遵守课程
+honor code，不应直接使用或公开提交其中的 solution。
+
 ---
 
 ## 引用与学术诚信

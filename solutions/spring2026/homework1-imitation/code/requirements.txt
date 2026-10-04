@@ -1,0 +1,9 @@
+torch>=2.4
+numpy==2.2.4
+gymnasium>=1.0
+pygame>=2.6
+matplotlib>=3.9
+imageio[ffmpeg]>=2.36
+pandas>=2.2
+seaborn>=0.13
+pytest>=8.0

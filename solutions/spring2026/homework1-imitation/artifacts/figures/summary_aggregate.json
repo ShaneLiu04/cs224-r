@@ -1,0 +1,26 @@
+{
+  "bc_reg_easy": {
+    "mean": 962.0200000000001,
+    "between_seed_std": 17.775151194856292,
+    "success_rate": 0.8960000000000001,
+    "seeds": 5
+  },
+  "bc_reg_hard": {
+    "mean": 281.56399999999996,
+    "between_seed_std": 12.52314976353793,
+    "success_rate": 0.0,
+    "seeds": 5
+  },
+  "bc_flow_hard": {
+    "mean": 997.124,
+    "between_seed_std": 6.430931503289393,
+    "success_rate": 0.9960000000000001,
+    "seeds": 5
+  },
+  "dagger_hard": {
+    "mean": 363.416,
+    "between_seed_std": 13.651295909180211,
+    "success_rate": 0.0,
+    "seeds": 5
+  }
+}
