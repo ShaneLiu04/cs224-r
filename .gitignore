@@ -38,6 +38,12 @@ solutions/**/datasets/
 solutions/**/checkpoints/
 solutions/**/outputs/
 solutions/**/runs/
+# HW3 keeps per-seed metric tables under artifacts/raw/runs.
+!solutions/**/artifacts/raw/runs/
+!solutions/**/artifacts/raw/runs/**/
+!solutions/**/artifacts/raw/runs/**/metrics.csv
+!solutions/**/artifacts/raw/runs/**/done
+!solutions/**/artifacts/raw/runs/**/eval_paths_last.npz
 solutions/**/wandb/
 solutions/**/*.ckpt
 solutions/**/*.pt

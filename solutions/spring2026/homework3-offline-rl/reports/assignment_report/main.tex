@@ -1,0 +1,324 @@
+\documentclass[10pt,twocolumn,a4paper]{ctexart}
+\usepackage[margin=1.7cm,columnsep=0.65cm]{geometry}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{natbib}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+
+\graphicspath{{../../artifacts/figures/}}
+\setlength{\parindent}{2em}
+\setlist{nosep,leftmargin=*}
+\hypersetup{colorlinks=true,linkcolor=blue!55!black,
+  citecolor=green!45!black,urlcolor=blue!65!black}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{CS224R Homework 3}
+\fancyhead[R]{ShaneLiu04}
+\fancyfoot[C]{\thepage}
+
+\newcommand{\figmaybe}[2]{%
+  \IfFileExists{../../artifacts/figures/#1.png}{%
+    \includegraphics[width=\linewidth]{#1}}{%
+    \fbox{\parbox[c][3.2cm][c]{\linewidth}{\centering\small #2}}}}
+
+\providecommand{\BestZeta}{0.9}
+\providecommand{\IqlBestUmazeMean}{--}\providecommand{\IqlBestUmazeStd}{--}
+\providecommand{\IqlBestMediumMean}{--}\providecommand{\IqlBestMediumStd}{--}
+\providecommand{\IqlBestStitchMean}{--}\providecommand{\IqlBestStitchStd}{--}
+\providecommand{\IqlBestStitchMaxMean}{--}\providecommand{\IqlBestStitchMaxStd}{--}
+\providecommand{\IqlZACMediumMean}{--}\providecommand{\IqlZACMediumStd}{--}
+\providecommand{\AwacMediumSuccMean}{--}\providecommand{\IqlBestMediumSuccMean}{--}
+\providecommand{\AwacStitchMean}{--}\providecommand{\AwacStitchStd}{--}
+\providecommand{\AwacStitchMaxMean}{--}\providecommand{\AwacStitchMaxStd}{--}
+\providecommand{\FbcBStitchMean}{--}\providecommand{\FbcBStitchSuccMean}{--}
+\providecommand{\FbcCFStitchMean}{--}\providecommand{\FbcFAStitchMean}{--}
+\providecommand{\FbcBAAStitchMean}{--}
+\providecommand{\NumRuns}{--}
+\providecommand{\AwacUmazeMean}{--}\providecommand{\AwacUmazeStd}{--}
+\providecommand{\AwacMediumMean}{--}\providecommand{\AwacMediumStd}{--}
+\providecommand{\IqlZACUmazeMean}{--}\providecommand{\IqlZACUmazeStd}{--}
+\providecommand{\IqlZAJUmazeMean}{--}\providecommand{\IqlZAJUmazeStd}{--}
+\providecommand{\IqlZAJMediumMean}{--}\providecommand{\IqlZAJMediumStd}{--}
+\providecommand{\IqlZAJStitchMean}{--}\providecommand{\IqlZAJStitchStd}{--}
+\providecommand{\IqlZAJStitchMaxMean}{--}\providecommand{\IqlZAJStitchMaxStd}{--}
+\providecommand{\FbcBAStitchMean}{--}\providecommand{\FbcBAStitchStd}{--}
+\providecommand{\FbcBAStitchMaxMean}{--}\providecommand{\FbcBAStitchMaxStd}{--}
+\providecommand{\AwacUmazeSuccMean}{--}\providecommand{\IqlZAJUmazeSuccMean}{--}
+\providecommand{\AwacMediumSuccMean}{--}\providecommand{\IqlZAJMediumSuccMean}{--}
+\InputIfFileExists{../results_macros.tex}{}{}
+
+\title{\vspace{-1.2em}\textbf{离线数据上的策略改进：\\
+AWAC、IQL 与轨迹拼接}}
+\author{ShaneLiu04\\
+\small\url{https://github.com/ShaneLiu04}}
+\date{}
+
+\begin{document}
+\maketitle
+\thispagestyle{fancy}
+
+\begin{abstract}
+本文在固定数据集上实现并比较 Advantage-Weighted Actor-Critic（AWAC）与
+Implicit Q-Learning（IQL）。AntMaze 使用 D4RL 的 u-maze 与 medium-diverse
+任务，PointMass 使用最大回报为 $-46$ 的子优拼接数据集。两种算法都用
+advantage-weighted regression 抽取策略；差别在价值备份是否查询当前策略在
+下一状态上的动作。AWAC 用 clipped double-Q，目标动作从 $\pi(\cdot\mid s')$
+采样。IQL 用 expectile 回归拟合 $V(s)$，Q 的目标只依赖数据集中的
+$(s,a,s')$。三组随机种子的最终评估回报为：AWAC 在 u-maze 上
+$\AwacUmazeMean\pm\AwacUmazeStd$，在 medium-diverse 上
+$\AwacMediumMean\pm\AwacMediumStd$；IQL 在 u-maze 上更优的
+$\zeta=\BestZeta$ 时分别为 $\IqlBestUmazeMean\pm\IqlBestUmazeStd$ 与
+$\IqlBestMediumMean\pm\IqlBestMediumStd$。拼接实验中该 $\zeta$ 的 IQL
+平均回报为 $\IqlBestStitchMean$，Filtered BC 为 $\FbcBAStitchMean$。全部曲线由逐 seed
+的 \texttt{metrics.csv} 生成。
+\end{abstract}
+
+\textbf{关键词：}Offline Reinforcement Learning；AWAC；IQL；Expectile；Stitching；D4RL
+
+\section{问题}
+Offline RL 只在事先收集的转移 $\mathcal{D}$ 上更新策略，训练期间不再与环境交互
+\citep{lange2012batch,levine2020offline}。这避免了在线探索的代价，也带来
+distribution shift：若把标准 Q-learning 的 $\max_{a'}$ 或当前策略的 $a'\sim\pi$
+用到数据集很少覆盖的动作上，函数近似会给出过高的价值，备份又把这个误差传回
+已见过的状态\citep{fujimoto2019bcq,kumar2019bear}。
+
+行为克隆只最大化 $\log\pi(a\mid s)$，$(s,a)\sim\mathcal{D}$。它不会查询数据集外的动作，
+因此不外推，但也不能把多条次优轨迹拼成一条更短的路径\citep{pomerleau1991bc}。
+AntMaze 的奖励在到达目标时为 $0$、其余步为 $-1$，回报越接近 $0$ 越好。数据集里往往
+没有从起点直达终点的完整成功轨迹，能改进策略的算法必须做 stitching：在价值上
+承认“这段轨迹的后半段和另一段的前半段可以接上”\citep{fu2020d4rl,kostrikov2022iql}。
+
+本文完成作业中的三组问题：AWAC 在两张迷宫上的三种子评测，IQL 的 expectile
+选择及其与 AWAC 的对比，以及 PointMass 上 IQL 与 Filtered BC 的拼接对照。
+
+\section{方法}
+\subsection{AWAC}
+策略损失是 advantage 加权的负对数似然\citep{peng2019awr,nair2020awac}：
+\begin{equation}
+L_\pi(\psi)=-\mathbb{E}_{(s,a)\sim\mathcal{D}}
+\Bigl[\log\pi_\psi(a\mid s)\,
+\exp\bigl(A(s,a)/\lambda\bigr)\Bigr].
+\end{equation}
+权重在反向传播前 detach，并截断到 $50$。$\lambda$ 默认 $0.1$。优势用单样本估计
+$A(s,a)=Q(s,a)-Q(s,a_{\pi})$，$a_{\pi}\sim\pi(\cdot\mid s)$。连续动作再截断到
+$[-1,1]$，与环境动作范围一致。
+
+Critic 维护两套 Q 网络及对应的目标网络。目标为
+\begin{equation}
+y=r+\gamma(1-d)\min_{i\in\{1,2\}}Q_{\bar\phi_i}(s',a'),
+\quad a'\sim\pi(\cdot\mid s'),
+\end{equation}
+$d$ 为终止标记。两个在线网络对同一个 $y$ 做均方误差，目标网络按
+$\tau=0.005$ 做 EMA\citep{fujimoto2018td3,lillicrap2016ddpg}。取 min 是为了压低
+单网络的过估计；它不能从根上消除 $a'$ 落到数据支撑外的问题。
+
+\subsection{IQL}
+IQL 不在备份里采样 $a'$。它另学一个状态价值 $V_\phi$，用 expectile 回归去贴
+目标 Q 的上尾\citep{newey1987expectile,kostrikov2022iql}：
+\begin{equation}
+L_2^{\zeta}(\mu)=\lvert\zeta-\mathbf{1}\{\mu<0\}\rvert\,\mu^{2},
+\end{equation}
+\begin{equation}
+L_V(\phi)=\mathbb{E}_{(s,a)\sim\mathcal{D}}
+\bigl[L_2^{\zeta}(Q_{\bar\theta}(s,a)-V_\phi(s))\bigr].
+\end{equation}
+$\zeta>0.5$ 时，正残差（$Q>V$，即 $V$ 偏低）权重大。$\zeta=0.5$ 退化为均值回归。
+Q 的目标只用这个 $V$，并且 stop-gradient：
+\begin{equation}
+L_Q(\theta)=\mathbb{E}\bigl[(r+\gamma(1-d)V_\phi(s')-Q_\theta(s,a))^{2}\bigr].
+\end{equation}
+Q 只在数据集动作上回归，因此备份不查询未见动作。策略仍用与 AWAC 相同的
+指数加权回归，优势改为 $A(s,a)=Q(s,a)-V(s)$。温度 $\lambda$ 对应论文中的
+$1/\beta$。
+
+\subsection{实现与核对}
+连续策略是对角高斯，均值经过 $\tanh$，对数标准差限制在 $[-5,2]$。离散
+PointMass 使用 Categorical。单元测试核对了四件事：expectile 权重的方向及其
+闭式一阶条件、终止步的 TD 目标退化为 $r$、IQL 的 V 更新不改 Q 参数、正优势
+动作在 AWR 之后占据 Categorical 的最大概率。测试在 CPU 上 $21$ 项全部通过。
+
+\section{实验设置}
+AntMaze 来自 D4RL\citep{fu2020d4rl}。u-maze 使用 \texttt{antmaze-umaze-v0}。
+公开镜像上的 \texttt{antmaze-medium-diverse-v0} HDF5 被截断：文件头记录的
+长度是 $231\,095\,454$ 字节，实际只有 $100\,917\,248$ 字节，h5py 拒绝打开。
+Berkeley 上的原文件可访问但单连接约 $8\,\mathrm{KB/s}$。medium 任务因此改用
+D4RL 发布的修复版 \texttt{antmaze-medium-diverse-v2}，共 $10^{6}$ 条转移。
+训练前把迷宫奖励减 $1$，使目标步为 $0$、其余步为 $-1$，与题面约定一致。
+评估回报按同样的平移计算。
+
+网络与优化沿用 starter code：AntMaze 的 Q/V 为两层宽度 $256$，策略为四层宽度
+$512$，Adam 学习率 $3\times10^{-4}$，batch $256$，折扣 $0.99$，各 $3\times10^{5}$
+次梯度步，每 $5\times10^{4}$ 步用 $50$ 条确定性轨迹评估。PointMass 为两层宽度
+$64$ 的离散 Q/V，策略学习率 $10^{-4}$，$5\times10^{4}$ 步，$20$ 条评估轨迹。
+作业要求的 AWAC、IQL 与 Filtered BC 各用三个种子 $\{1,2,3\}$。
+expectile 与温度扫描中，$\zeta\in\{0.5,0.7,0.95\}$ 和 $\lambda\in\{0.03,0.3\}$
+各有两个种子，$\lambda=1.0$ 有一个种子。表中的均值和标准差按这些种子的最终
+\texttt{Eval\_AverageReturn} 计算，不是单次评估内部的轨迹标准差。
+
+拼接数据集有 $79$ 条轨迹、$8184$ 步，回报均值约 $-104$，最大 $-46$。Filtered BC
+只保留回报最高的 $10\%$ 轨迹。IQL 使用在 u-maze 上更优的 $\zeta$。额外消融包括
+$\zeta\in\{0.5,0.7,0.95\}$、$\lambda\in\{0.03,0.3,1.0\}$，以及过滤比例
+$1\%,25\%,50\%,100\%$。硬件是一台 NVIDIA RTX PRO 6000，cgroup CPU 配额为 $22$ 核。
+
+\section{AntMaze}
+\begin{table}[t]
+\centering
+\caption{最终评估回报（三种子）。越高越好。}
+\label{tab:antmaze}
+\begin{tabular}{lcc}
+\toprule
+ & u-maze & medium-diverse \\
+\midrule
+AWAC ($\lambda=0.1$) & $\AwacUmazeMean\pm\AwacUmazeStd$ & $\AwacMediumMean\pm\AwacMediumStd$ \\
+IQL ($\zeta=0.2$) & $\IqlZACUmazeMean\pm\IqlZACUmazeStd$ & $\IqlZACMediumMean\pm\IqlZACMediumStd$ \\
+IQL ($\zeta=0.9$) & $\IqlZAJUmazeMean\pm\IqlZAJUmazeStd$ & $\IqlZAJMediumMean\pm\IqlZAJMediumStd$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\figmaybe{fig1_antmaze_returns}{fig1 return curves}
+\caption{AntMaze 评估回报。阴影为种子间标准差。}
+\label{fig:returns}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\figmaybe{fig2_antmaze_success}{fig2 success}
+\caption{评估成功率：轨迹中出现目标奖励的比例。}
+\label{fig:success}
+\end{figure}
+
+u-maze 上 $\zeta=0.2$ 的最终回报是 $\IqlZACUmazeMean$，$\zeta=0.9$ 是
+$\IqlZAJUmazeMean$。两者中更高的是 $\zeta=\BestZeta$，medium 与拼接实验使用这个值。
+$\zeta>0.5$ 把 $V$ 推向同一状态上较高的 in-support 动作；$\zeta<0.5$ 把权重点放在
+低于当前 $V$ 的目标上，学到的更接近较差结果\citep{kostrikov2022iql}。哪一侧回报更高，
+取决于数据里高价值动作是否足够密，以及过大的 expectile 是否在拟合偶然的高回报。
+
+medium 迷宫更长，数据里成功轨迹更稀。AWAC 的最终回报是
+$\AwacMediumMean$，成功率 $\AwacMediumSuccMean$；$\zeta=\BestZeta$ 的 IQL 是
+$\IqlBestMediumMean$，成功率 $\IqlBestMediumSuccMean$。$\zeta=0.2$ 的三条种子
+都停在 $\IqlZACMediumMean$，成功率为 $0$。两种算法的差别在备份动作从哪里来。
+AWAC 的 Bellman 目标要采样 $a'\sim\pi(\cdot\mid s')$。训练早期 $\pi$ 接近随机，
+$a'$ 经常离开数据集动作的邻域，Q 在那里没有约束，clipped double-Q 只能减轻
+过估计\citep{fujimoto2019bcq,kumar2020cql}。IQL 的 Q 目标是 $V(s')$，$V$ 又只在
+数据集动作的 expectile 上回归，备份链停留在数据支撑内。$\zeta=0.2$ 把这个
+expectile 压到下尾，medium 上就没有留下可到达目标的策略。
+
+\begin{figure}[t]
+\centering
+\figmaybe{fig3_expectile_umaze}{fig3 expectile}
+\caption{u-maze 上的 expectile 扫描。误差条为种子间标准差。}
+\label{fig:zeta}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\figmaybe{fig5_awac_lambda}{fig5 lambda}
+\caption{u-maze 上的 AWAC 温度 $\lambda$。横轴为对数刻度。}
+\label{fig:lam}
+\end{figure}
+
+$\lambda$ 控制策略离开行为分布的程度。$\lambda$ 很小时候选动作的权重大幅拉开，
+少数高优势动作主导梯度，方差上升。$\lambda$ 大时权重接近常数，更新接近行为克隆。
+图~\ref{fig:lam} 给出 $\lambda\in\{0.03,0.1,0.3,1.0\}$ 的最终回报。$\lambda=0.1$
+的三种子均值是 $\AwacUmazeMean$，种子间标准差 $\AwacUmazeStd$。$\lambda=1.0$
+的单种子回报更高，但只有一个种子，不能单独当成温度的最优点。
+
+\begin{figure}[t]
+\centering
+\figmaybe{fig9_critic_diagnostics}{fig9 losses}
+\caption{Critic 损失。IQL 的 Q 损失与 expectile V 损失分开记录。}
+\label{fig:loss}
+\end{figure}
+
+\section{拼接}
+数据集没有任何一条轨迹优于 $-46$。PointMass 的 \texttt{step} 会把离散动作
+变成位移后再加上标准差 $0.5$ 的高斯噪声，同一次评估的 $20$ 条轨迹因此不会重合。
+平均回报描述典型轨迹，最大回报只说明这 $20$ 条里最好的一条。回合上限是 $150$ 步，
+从未到达目标时回报为 $-150$。
+
+Filtered BC 在最高回报的 $10\%$ 轨迹上做极大似然，策略支撑限制在这些轨迹已经
+走过的动作上。IQL 的 $V$ 可以在一个状态上采纳来自另一条轨迹的高价值后继，从而
+走出任何单条轨迹都没有完整走过的路径。同一数据集上的 AWAC 也列入图~\ref{fig:bars}，
+用来对照：这个迷宫只有 $5$ 个离散动作，行为数据对相关动作的覆盖比 AntMaze 密。
+
+\begin{table}[t]
+\centering
+\caption{PointMass 拼接数据集上的三种子最终回报。}
+\label{tab:stitch}
+\begin{tabular}{lcc}
+\toprule
+ & 平均回报 & 最大回报 \\
+\midrule
+IQL ($\zeta=\BestZeta$) & $\IqlBestStitchMean\pm\IqlBestStitchStd$ & $\IqlBestStitchMaxMean\pm\IqlBestStitchMaxStd$ \\
+AWAC ($\lambda=0.1$) & $\AwacStitchMean\pm\AwacStitchStd$ & $\AwacStitchMaxMean\pm\AwacStitchMaxStd$ \\
+Filtered BC ($10\%$) & $\FbcBAStitchMean\pm\FbcBAStitchStd$ & $\FbcBAStitchMaxMean\pm\FbcBAStitchMaxStd$ \\
+\midrule
+数据集 & \multicolumn{2}{c}{均值 $-104$，最大 $-46$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\figmaybe{fig6_stitching_returns}{fig6 bars}
+\caption{不同算法与过滤比例的最终回报。虚线为数据集最大回报 $-46$。}
+\label{fig:bars}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\figmaybe{fig7_stitching_trajectories}{fig7 traj}
+\caption{左：数据集轨迹按回报着色。中、右：种子 $1$ 的最终评估轨迹。星号为目标。}
+\label{fig:traj}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\figmaybe{fig8_dataset_returns}{fig8 hist}
+\caption{拼接数据集的轨迹回报分布，以及两种方法的平均评估回报。}
+\label{fig:hist}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\figmaybe{fig4_expectile_stitching}{fig4 stitch zeta}
+\caption{拼接任务上的 expectile。平均回报随 $\zeta$ 升高，并在较高的 $\zeta$ 上超过 $-46$。}
+\label{fig:stitchzeta}
+\end{figure}
+
+IQL（$\zeta=\BestZeta$）的平均回报 $\IqlBestStitchMean$ 高于 $-46$，最大回报
+$\IqlBestStitchMaxMean$ 同样高于 $-46$。平均意义下，评估轨迹已经短于数据集里最好的一条。
+Filtered BC（$10\%$）的平均回报 $\FbcBAStitchMean$ 低于 $-46$，最大回报
+$\FbcBAStitchMaxMean$ 可以高于 $-46$：动作噪声让少数轨迹走得更短，典型轨迹仍然长于
+数据中的最好轨迹。图~\ref{fig:traj} 里两种方法都能到达目标格，差别在路径长度。
+IQL 的轨迹更集中在从起点向上再进入目标的走廊；Filtered BC 在下半区来回更多。
+
+过滤比例不是单调的。$1\%$ 时三个种子的回报都是 $\FbcBStitchMean$，成功率
+$\FbcBStitchSuccMean$，策略没有到达目标。$10\%$ 到 $50\%$ 的平均回报分别是
+$\FbcBAStitchMean$、$\FbcCFStitchMean$ 和 $\FbcFAStitchMean$，都到达了目标。
+使用全部数据时平均回报降到 $\FbcBAAStitchMean$，更接近数据集本身的均值。
+AWAC 在这个任务上的平均回报是 $\AwacStitchMean$，也高于 $-46$。离散小迷宫上，
+策略采样的备份没有阻止拼接；AntMaze 上的差距方向相反，IQL 的最终回报高于
+$\lambda=0.1$ 的 AWAC。
+
+\section{结论}
+AWAC 用优势加权回归改进行为策略，价值备份仍依赖 $a'\sim\pi$。IQL 把这一查询换成
+in-sample expectile，Q 只在数据动作上更新。u-maze 上 $\zeta=0.9$ 的最终回报
+$\IqlZAJUmazeMean$ 高于 $\zeta=0.2$ 的 $\IqlZACUmazeMean$，medium 沿用
+$\zeta=\BestZeta$。该设置下 IQL 在两张迷宫上的最终回报都高于 $\lambda=0.1$ 的 AWAC；
+$\zeta=0.2$ 在 medium 上三个种子都没有到达目标。PointMass 上，IQL 的平均回报
+$\IqlBestStitchMean$ 高于数据集上限 $-46$，Filtered BC 的 $\FbcBAStitchMean$ 低于 $-46$。
+前者的典型轨迹短于数据中最好的一条，后者只在动作噪声下的少数轨迹上超过这条界限。
+
+\bibliographystyle{plainnat}
+\bibliography{../references}
+
+\end{document}

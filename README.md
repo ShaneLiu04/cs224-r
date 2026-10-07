@@ -290,6 +290,27 @@ Spring 2026 Homework 2 的实现与实验位于：
 
 ![Homework 2 学习曲线](solutions/spring2026/homework2-online-rl/artifacts/figures/main_learning_curves.png)
 
+## Homework 3 完整复现
+
+Spring 2026 Homework 3 的实现与实验位于：
+
+- [实现与复现说明](solutions/spring2026/homework3-offline-rl/README.md)
+- [AWAC 与 IQL 代码](solutions/spring2026/homework3-offline-rl/code/)
+- [原始指标与实验图](solutions/spring2026/homework3-offline-rl/artifacts/)
+- [作业学术报告（PDF）](solutions/spring2026/homework3-offline-rl/reports/assignment_report/main.pdf)
+- [Offline RL 面试知识总结（PDF）](solutions/spring2026/homework3-offline-rl/reports/interview_guide/main.pdf)
+
+实验比较 AWAC 与 IQL 在 D4RL AntMaze 上的三种子评估，并在 PointMass 拼接数据集上
+对照 IQL 与 Filtered BC。u-maze 上 `ζ=0.9` 优于 `ζ=0.2`，medium 沿用 0.9。
+IQL 在两张迷宫上的最终回报都高于 `λ=0.1` 的 AWAC。拼接任务中 IQL 的平均回报
+高于数据集最大值 -46，Filtered BC（top 10%）的平均回报低于 -46。
+medium 使用修复后的 `antmaze-medium-diverse-v2`，因为公开的 v0 HDF5 被截断。
+所有曲线由逐 seed `metrics.csv` 生成。
+
+![Homework 3 AntMaze 回报](solutions/spring2026/homework3-offline-rl/artifacts/figures/fig1_antmaze_returns.png)
+
+![Homework 3 拼接轨迹](solutions/spring2026/homework3-offline-rl/artifacts/figures/fig7_stitching_trajectories.png)
+
 ---
 
 ## 引用与学术诚信
