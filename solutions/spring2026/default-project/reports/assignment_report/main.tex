@@ -1,0 +1,357 @@
+\documentclass[10pt,twocolumn,a4paper]{ctexart}
+\usepackage[margin=1.7cm,columnsep=0.65cm]{geometry}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{natbib}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+
+\graphicspath{{../../artifacts/figures/}}
+\setlength{\parindent}{2em}
+\setlist{nosep,leftmargin=*}
+\hypersetup{colorlinks=true,linkcolor=blue!55!black,
+  citecolor=green!45!black,urlcolor=blue!65!black}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{CS224R Default Project}
+\fancyhead[R]{ShaneLiu04}
+\fancyfoot[C]{\thepage}
+
+\newcommand{\figmaybe}[2]{%
+  \IfFileExists{../../artifacts/figures/#1.png}{%
+    \includegraphics[width=\linewidth]{#1}}{%
+    \fbox{\parbox[c][3.2cm][c]{\linewidth}{\centering\small #2}}}}
+
+\providecommand{\SftLossStart}{--}\providecommand{\SftLossEnd}{--}
+\providecommand{\SftEvalNll}{--}\providecommand{\SftSteps}{--}
+\providecommand{\IpoLossStart}{--}\providecommand{\IpoLossEnd}{--}
+\providecommand{\IpoEvalLoss}{--}\providecommand{\IpoEvalAcc}{--}
+\providecommand{\DpoLossStart}{--}\providecommand{\DpoLossEnd}{--}
+\providecommand{\DpoEvalLoss}{--}\providecommand{\DpoEvalAcc}{--}
+\providecommand{\IpoMeanEvalLoss}{--}\providecommand{\IpoMeanEvalAcc}{--}
+\providecommand{\DpoMeanEvalLoss}{--}\providecommand{\DpoMeanEvalAcc}{--}
+\providecommand{\IpoBetaHalfEvalLoss}{--}\providecommand{\IpoBetaHalfEvalAcc}{--}
+\providecommand{\RlooKEightExactMean}{--}\providecommand{\RlooKEightRewardMean}{--}
+\providecommand{\RlooStopExactMean}{--}
+\providecommand{\PassBaseOne}{--}\providecommand{\PassBaseFour}{--}\providecommand{\PassBaseEight}{--}
+\providecommand{\PassSftOne}{--}\providecommand{\PassSftFour}{--}
+\providecommand{\PassSftEight}{--}\providecommand{\PassSftSixteen}{--}\providecommand{\PassSftN}{--}
+\providecommand{\PassIpoOne}{--}\providecommand{\PassIpoFour}{--}\providecommand{\PassIpoEight}{--}
+\providecommand{\PassDpoOne}{--}\providecommand{\PassDpoFour}{--}\providecommand{\PassDpoEight}{--}
+\providecommand{\PassIpoMeanOne}{--}\providecommand{\PassIpoMeanFour}{--}
+\providecommand{\PassIpoMeanEight}{--}
+\providecommand{\PassRlooKEightSeedOneFour}{--}
+\providecommand{\PassRlooKTwoFour}{--}
+\providecommand{\PassRlooNoKlFour}{--}
+\providecommand{\PassDpoMeanOne}{--}\providecommand{\PassDpoMeanEight}{--}
+\providecommand{\PassIpoBetaHalfOne}{--}
+\providecommand{\PassRlooKEightOne}{--}\providecommand{\PassRlooKEightFour}{--}
+\providecommand{\PassRlooKEightEight}{--}
+\providecommand{\PassRlooKEightSeedOneOne}{--}\providecommand{\PassRlooKEightSeedOneEight}{--}
+\providecommand{\PassRlooKTwoOne}{--}\providecommand{\PassRlooKTwoEight}{--}
+\providecommand{\PassRlooNoKlOne}{--}\providecommand{\PassRlooNoKlEight}{--}
+\providecommand{\PassRlooStopOne}{--}\providecommand{\PassRlooStopFour}{--}
+\providecommand{\PassRlooStopEight}{--}
+\providecommand{\PassRlooLongOne}{--}\providecommand{\PassRlooLongFour}{--}
+\providecommand{\PassRlooLongEight}{--}
+\InputIfFileExists{../results_macros.tex}{}{}
+
+\title{\vspace{-1.2em}\textbf{Countdown 上的后训练：\\
+SFT、IPO 与 RLOO}}
+\author{ShaneLiu04\\
+\small\url{https://github.com/ShaneLiu04}}
+\date{}
+
+\begin{document}
+\maketitle
+\thispagestyle{fancy}
+
+\begin{abstract}
+本文在 Countdown 算术任务上实现一条语言模型后训练管线：监督微调（SFT）、
+Identity Preference Optimization（IPO）与 Direct Preference Optimization（DPO），
+以及 leave-one-out REINFORCE（RLOO）。策略是 Qwen2.5-0.5B。奖励由可执行的
+等式检查给出：没有 \texttt{<answer>} 标签为 $0$，格式正确但等式错误为 $0.1$，
+用恰好给定的数字得到目标值为 $1$。基座模型在 $50$ 道测试题上的
+pass@1、pass@4、pass@8 都是 $\PassBaseOne$。用搜索得到的短等式做一轮 SFT 之后，
+pass@1 升到 $\PassSftOne$（$n=\PassSftN$），留出负对数似然为 $\SftEvalNll$。
+在 $\pi=\pi_{\mathrm{ref}}$ 处，IPO 损失等于 $(1/(2\beta))^2$，DPO 损失等于 $\log 2$，
+实现与这两个恒等式一致。以序列对数概率之和为 $\Delta$ 时，IPO 在 $\beta=0.1$
+上从 $\IpoLossStart$ 升到验证损失 $\IpoEvalLoss$，偏好准确率停在 $\IpoEvalAcc$。
+长度平均把 IPO 验证损失维持在 $\IpoMeanEvalLoss$。RLOO 的组内精确匹配率在
+四十步内围绕 $\RlooKEightExactMean$ 波动。$K=8$ 的两个种子在测试集上的
+pass@1 分别是 $\PassRlooKEightOne$ 和 $\PassRlooKEightSeedOneOne$，
+pass@8 分别是 $\PassRlooKEightEight$ 和 $\PassRlooKEightSeedOneEight$。
+短程在线更新没有稳定地超过 SFT。全部数字来自 \texttt{metrics.jsonl} 与
+pass@k 的 JSON 摘要。
+\end{abstract}
+
+\textbf{关键词：}SFT；IPO；DPO；RLOO；pass@k；Countdown；可验证奖励
+
+\section{问题}
+Countdown 给定一组整数和一个目标值，要求用每个整数恰好一次，以及
+$+,-,\times,/$，写出一个等于目标值的等式。模型先在 \texttt{<think>} 中写下
+过程，再把等式放进 \texttt{<answer>}。这种任务有一个程序可以判定对错，
+因此奖励不依赖另一个打分模型\citep{cobbe2021gsm8k,uesato2022outcome,lightman2023verify}。
+
+基座模型不会发出作业要求的标签。没有标签时奖励恒为 $0$，一组样本的
+leave-one-out 优势也是 $0$，策略梯度没有方向。SFT 的作用是先把输出分布移到
+奖励非零的区域，后面的偏好优化和在线强化学习才有比较对象\citep{ouyang2022instructgpt,gandhi2025cognitive}。
+
+本文实现作业中的三个训练阶段，并在同一套 $50$ 道测试题上用无偏
+pass@$k$ 比较检查点\citep{chen2021codex}。官方 starter code 保持不动。
+采样与参数更新放在同一个进程里，目标函数与 Ray worker 中的
+\texttt{update} 相同。
+
+\section{方法}
+\subsection{SFT}
+因果语言模型用位置 $t-1$ 的 logits 预测 token $t$。提示是左填充，回答是右填充。
+可训练位置必须同时是回答 token 且不是 padding，掩码再右移一位，与预测目标对齐。
+损失是这些位置上的平均负对数似然。提示 token 的梯度被掩掉，否则模型会把力气花在
+复读题目上。
+
+\subsection{IPO 与 DPO}
+记 $\Delta(y)=\log\pi_\theta(y\mid x)-\log\pi_{\mathrm{ref}}(y\mid x)$。
+IPO 把 chosen 与 rejected 的对数比拉向一个常数\citep{azar2024ipo}：
+\begin{equation}
+L_{\mathrm{IPO}}=\bigl(\Delta_w-\Delta_l-1/(2\beta)\bigr)^2.
+\end{equation}
+DPO 用同一个 $\Delta$，但是 logistic 形式\citep{rafailov2023dpo}：
+\begin{equation}
+L_{\mathrm{DPO}}=-\log\sigma\bigl(\beta(\Delta_w-\Delta_l)\bigr).
+\end{equation}
+参考模型是同一份初始权重的第二次加载，参数 \texttt{requires\_grad} 为假。
+$\Delta$ 可以是回答 token 的对数概率之和，也可以是长度平均。
+$\pi_\theta=\pi_{\mathrm{ref}}$ 时 $\Delta=0$，于是 IPO 损失是 $(1/(2\beta))^2$，
+DPO 损失是 $\log 2$。这两条恒等式用来核对实现，不依赖数据内容。
+
+\subsection{RLOO}
+对同一个提示采样 $K$ 条回答，奖励为 $r_1,\ldots,r_K$。第 $i$ 条的
+leave-one-out 优势是\citep{kool2019buy,ahmadian2024rloo}
+\begin{equation}
+\hat A_i=r_i-\frac{1}{K-1}\sum_{j\neq i}r_j.
+\end{equation}
+组内奖励完全相同则优势为 $0$。在线采样使用 temperature $1$、top-$p$ $1$，
+行为策略就是当前策略，重要性权重为 $1$。策略损失是
+$-\mathbb{E}[\hat A_i\log\pi_\theta(y_i\mid x)]$，再加上 token 熵奖励和
+$\mathrm{KL}(\pi_\theta\|\pi_{\mathrm{ref}})$\citep{williams1992reinforce,schulman2017ppo}。
+熵和 KL 在词表维上按时间块计算，避免把整个 $[B,T,V]$ 转成 float32。
+
+pass@$k$ 使用无偏估计 $1-\binom{n-c}{k}/\binom{n}{k}$，其中 $n$ 是每个提示的
+采样数，$c$ 是奖励为 $1$ 的条数\citep{chen2021codex}。$n<k$ 时该项不计算。
+
+\subsection{实现核对}
+单元测试有七项。掩码丢掉提示和 padding。负对数似然的反向传播不改动提示位置。
+参考策略上的 IPO 损失等于 $(1/(2\beta))^2$。大间隔时 DPO 损失接近 $0$。
+奖励 $[1,0,0,0,0.5,0.5]$、组大小 $2$ 的优势是 $[1,-1,0,0,0,0]$，组内奖励相等时优势为 $0$。
+序列对数概率默认是求和，打开平均开关后变成均值。均匀分布的熵为 $\log V$，
+两个相同分布的 KL 为 $0$。
+
+\section{实验设置}
+模型是 Qwen2.5-0.5B，词表大小约 $151\,936$\citep{qwen2025qwen25}。
+硬件是一张 NVIDIA RTX PRO 6000（$97\,887\,\mathrm{MiB}$），PyTorch $2.8.0$+cu128。
+cgroup 的 CPU 配额是 $22$ 核。注意力使用 scaled dot-product attention。
+\texttt{gradient\_clipping}$=0$ 表示不裁剪。若把裁剪范数设成 $0$，
+\texttt{clip\_grad\_norm\_} 会把梯度清零，因此只有阈值大于 $0$ 才调用裁剪。
+
+Countdown 训练集有 $490\,314$ 条，测试集有 $50$ 条。测试集不参与任何训练。
+提示已经带有 Qwen 的 chat 模板，SFT 不再套第二次模板。SFT 的回答由穷举括号与
+运算得到：每个数字恰好用一次，等式的值等于目标。$20\,000$ 条均匀抽样全部有解，
+其中 $19\,000$ 条训练，$1\,000$ 条留出。回答是短句，形如
+``\texttt{<think>} expr uses each given number once. \texttt{</think>}
+\texttt{<answer>} expr \texttt{</answer>}''。
+这教会格式和一条正确等式，不教会长的搜索过程。
+
+SFT 使用 batch $64$、梯度累积 $2$、学习率 $5\times 10^{-5}$、warmup 比例 $0.05$、
+余弦调度、裁剪范数 $1$、最大提示 $512$、最大回答 $128$，一个 epoch，
+$296$ 次优化器更新。偏好数据有 $48\,311$ 对训练样本和 $138$ 对验证样本，
+列包括 \texttt{query}、\texttt{response\_ws}、\texttt{response\_ls}。
+\texttt{query} 还不是 chat 模板，因此 IPO 的数据加载会套模板。
+求和版本的 IPO（$\beta=0.1$）训练 $120$ 步，DPO（$\beta=0.1$）和
+IPO（$\beta=0.5$）各 $80$ 步。长度平均版本各 $250$ 步。
+学习率 $5\times 10^{-6}$，batch $16$，累积 $2$，提示上限 $384$，回答上限 $256$。
+调度长度按 \texttt{max\_steps} 计算，避免短跑仍处在按全数据估计的 warmup 里。
+
+RLOO 从 SFT 检查点出发，在训练集的前 $2\,000$ 条上循环。默认每步 $4$ 个提示、
+组大小 $8$、最多新生成 $128$ 个 token、学习率 $10^{-5}$、熵系数 $0.001$、
+KL 系数 $0.001$、四十步。对照包括组大小 $2$（每步 $8$ 个提示，批大小仍是 $16$）、
+去掉熵和 KL、第二个随机种子，以及修正停止符之后的四十步和一百二十步。
+评估温度 $0.6$、top-$p$ $0.95$。SFT 的 pass@$k$ 用每个提示 $16$ 条回答，
+其余检查点用 $8$ 条。估计量对同一 $k$ 无偏，方差不同。
+
+官方脚本用 vLLM 采样、用 Ray 更新。本实验改成进程内的 Hugging Face
+\texttt{generate}。原因是 Blackwell 上的 vLLM 轮子体积大且不一定匹配当前 CUDA。
+目标函数、on-policy 的 temperature 和 top-$p$、以及优势定义与课程脚本一致。
+这个替换改变的是吞吐和停止符的实现，不是损失的数学形式。
+
+\section{SFT}
+\begin{figure}[t]
+\centering
+\figmaybe{fig1_sft_nll}{SFT NLL}
+\caption{搜索等式上的回答负对数似然。灰线是学习率，单位 $10^{-5}$，用右轴。
+橙色虚线是 $1\,000$ 条留出样本的负对数似然。}
+\label{fig:sft}
+\end{figure}
+
+图~\ref{fig:sft} 里训练损失从 $\SftLossStart$ 降到 $\SftLossEnd$，留出损失是
+$\SftEvalNll$。下降主要发生在前二十步，之后损失贴着留出值波动，学习率按余弦
+降到 $0$。留出集与训练集来自同一种搜索答案，所以低负对数似然说明模型记住了
+这种短格式，不能单独说明它会解没见过的数字组合。
+
+基座的 pass@1 是 $\PassBaseOne$。SFT 之后 pass@1 为 $\PassSftOne$，
+pass@4 为 $\PassSftFour$，pass@8 为 $\PassSftEight$，pass@16 为 $\PassSftSixteen$。
+抽样里可以看到正确的标签和一条用全给定数字的等式，但等式的值经常不等于目标。
+格式奖励因此接近饱和，精确奖励仍然稀疏。这正是后面 RLOO 能算出非零优势的原因。
+
+\section{偏好优化}
+\begin{figure}[t]
+\centering
+\figmaybe{fig2_preference_loss}{preference loss}
+\caption{左：IPO。点线是 $\pi=\pi_{\mathrm{ref}}$ 时的恒等式，
+$\beta=0.1$ 为 $25$，$\beta=0.5$ 为 $1$。右：DPO，点线是 $\log 2$。
+sum 表示 $\Delta$ 用序列对数概率之和，mean 表示长度平均。}
+\label{fig:ipo}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\figmaybe{fig3_preference_accuracy}{preference accuracy}
+\caption{滚动八步的偏好准确率：$\Delta_w>\Delta_l$ 的比例。虚线是 $0.5$。}
+\label{fig:acc}
+\end{figure}
+
+图~\ref{fig:ipo} 的第一步损失与恒等式一致：$\beta=0.1$ 的 IPO 从 $\IpoLossStart$
+起步，$\beta=0.5$ 从 $1$ 起步，DPO 从 $\DpoLossStart$ 起步。求和版本的 IPO
+随后剧烈振荡，验证损失升到 $\IpoEvalLoss$，验证准确率 $\IpoEvalAcc$。
+$\beta=0.5$ 的验证损失是 $\IpoBetaHalfEvalLoss$，准确率 $\IpoBetaHalfEvalAcc$。
+长度平均的 IPO 验证损失是 $\IpoMeanEvalLoss$，准确率 $\IpoMeanEvalAcc$，
+曲线贴着 $25$ 这条恒等线。DPO 求和版本的训练损失降到 $\DpoLossEnd$，
+验证损失是 $\DpoEvalLoss$，验证准确率 $\DpoEvalAcc$。长度平均的 DPO
+验证损失是 $\DpoMeanEvalLoss$，准确率 $\DpoMeanEvalAcc$。
+
+平方损失对 $\Delta$ 的尺度敏感。回答有一两百个 token 时，对数概率之和的微小相对变化
+会让 $\Delta_w-\Delta_l$ 离开 $1/(2\beta)=5$，平方项就到几十。长度平均把目标间隔
+放在每个 token 上，更新更稳，但在这 $250$ 步里也没有把准确率拉离 $0.5$。
+图~\ref{fig:acc} 的五条曲线都在 $0.5$ 附近。偏好数据里的 chosen 与 rejected
+都是带 \texttt{<think>} 的长文本，而 SFT 只见过一行等式。参考策略给两条长回答的
+对数概率都很低，短程更新分不开它们。
+
+\section{RLOO}
+\begin{figure}[t]
+\centering
+\figmaybe{fig4_rloo_exact}{RLOO exact rate}
+\caption{在线采样的精确匹配率，五点滚动平均。$K$ 是组大小。
+stop fixed 使用能匹配前导空格的 \texttt{</answer>} token 序列。}
+\label{fig:rloo}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\figmaybe{fig5_rloo_reward_mix}{reward mix}
+\caption{$K=8$、种子 $0$、未修正停止符时的奖励构成，五点滚动平均。
+SFT 之后几乎每条样本都有答案标签，绿色部分才是等式正确的比例。}
+\label{fig:mix}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\figmaybe{fig6_rloo_kl_entropy}{KL and entropy}
+\caption{同一条 $K=8$ 运行的 token KL 与 token 熵。系数都是 $0.001$。}
+\label{fig:kl}
+\end{figure}
+
+图~\ref{fig:mix} 里灰色的``没有标签''几乎看不见，橙色的格式奖励占绝大多数，
+绿色的精确匹配大约在 $0.1$ 到 $0.3$ 之间。四十步上精确匹配率的平均值是
+$\RlooKEightExactMean$，奖励平均值是 $\RlooKEightRewardMean$。
+组内既有 $1$ 又有 $0.1$ 时优势非零。全体都是 $0.1$ 或全体都是 $1$ 时，
+日志里的策略损失就是 $0$，这与公式一致，也说明这一步没有学习信号。
+
+图~\ref{fig:rloo} 的四条短跑都在 $0.05$ 到 $0.35$ 之间来回，没有单调上升。
+每步只有 $4$ 个提示、$32$ 条样本，滚动平均仍然很吵。$K=2$ 的基线只有另一条样本，
+方差更大，测试集上的 pass@8 也更低。去掉 KL 和熵之后，在线精确率没有分开，
+测试集 pass@8 略高，见下一节。
+
+第一批 RLOO 把停止序列设成 \texttt{encode("</answer>")}，得到
+\texttt{</}、\texttt{answer}、\texttt{>}。模型实际生成的是带前导空格的
+\texttt{Ġ</}、\texttt{answer}、\texttt{>}。尾部对不上，生成会越过答案标签，
+继续吐出 \texttt{</system>} 和 \texttt{</user>} 的文本。这些 token 仍在回答掩码里，
+序列级优势会加到它们上面。修正后的停止同时接受两种切分，并在第一个闭合标签处
+截断损失。四十步修正运行的在线精确率均值是 $\RlooStopExactMean$。
+它没有高于未修正的运行。把同一设置延长到一百二十步后，测试
+pass@1 是 $\PassRlooLongOne$，pass@8 是 $\PassRlooLongEight$，
+后者低于 SFT 的 $\PassSftEight$。停止符决定优势落在哪些 token 上。
+在这个批大小下，加长步数并没有把 pass@8 拉过 SFT。
+
+\section{pass@k}
+\begin{figure}[t]
+\centering
+\figmaybe{fig7_passk}{pass at k}
+\caption{测试集 $50$ 题的无偏 pass@$k$。SFT 每个提示采样 $16$ 条，其余为 $8$ 条。
+Base 三项都是 $0$，柱高与坐标轴重合。}
+\label{fig:pass}
+\end{figure}
+
+\begin{table}[t]
+\centering
+\caption{测试集 pass@$k$。SFT 的 $n=16$，其余 $n=8$。}
+\label{tab:pass}
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+ & pass@1 & pass@4 & pass@8 \\
+\midrule
+Base & $\PassBaseOne$ & $\PassBaseFour$ & $\PassBaseEight$ \\
+SFT & $\PassSftOne$ & $\PassSftFour$ & $\PassSftEight$ \\
+IPO $\beta=0.1$，sum & $\PassIpoOne$ & $\PassIpoFour$ & $\PassIpoEight$ \\
+DPO $\beta=0.1$，sum & $\PassDpoOne$ & $\PassDpoFour$ & $\PassDpoEight$ \\
+IPO $\beta=0.1$，mean & $\PassIpoMeanOne$ & $\PassIpoMeanFour$ & $\PassIpoMeanEight$ \\
+RLOO $K=8$，seed 0 & $\PassRlooKEightOne$ & $\PassRlooKEightFour$ & $\PassRlooKEightEight$ \\
+RLOO $K=8$，seed 1 & $\PassRlooKEightSeedOneOne$ & $\PassRlooKEightSeedOneFour$ & $\PassRlooKEightSeedOneEight$ \\
+RLOO $K=2$ & $\PassRlooKTwoOne$ & $\PassRlooKTwoFour$ & $\PassRlooKTwoEight$ \\
+RLOO $K=8$，无 KL & $\PassRlooNoKlOne$ & $\PassRlooNoKlFour$ & $\PassRlooNoKlEight$ \\
+RLOO $K=8$，修正停止 & $\PassRlooStopOne$ & $\PassRlooStopFour$ & $\PassRlooStopEight$ \\
+RLOO $K=8$，120 步 & $\PassRlooLongOne$ & $\PassRlooLongFour$ & $\PassRlooLongEight$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+表~\ref{tab:pass} 和图~\ref{fig:pass} 放在一起读。SFT 把 pass@1 从 $\PassBaseOne$
+抬到 $\PassSftOne$。求和 IPO、求和 DPO 和长度平均 IPO 的 pass@1 分别是
+$\PassIpoOne$、$\PassDpoOne$ 和 $\PassIpoMeanOne$，pass@8 分别是
+$\PassIpoEight$、$\PassDpoEight$ 和 $\PassIpoMeanEight$。
+它们高于 SFT 的 pass@1，但 $n$ 和种子都只有一份，差距在几个百分点，
+和偏好准确率仍接近 $0.5$ 是同一件事的两面：检查点还没有稳定地偏好 chosen。
+
+$K=8$ 的 RLOO 在种子 $0$ 上 pass@1 为 $\PassRlooKEightOne$，种子 $1$ 为
+$\PassRlooKEightSeedOneOne$。pass@8 从 $\PassRlooKEightEight$ 降到
+$\PassRlooKEightSeedOneEight$。$K=2$ 的 pass@8 是 $\PassRlooKTwoEight$。
+去掉 KL 与熵的 pass@1 是 $\PassRlooNoKlOne$，pass@8 是 $\PassRlooNoKlEight$，
+是这组 RLOO 里 pass@8 最高的一条，仍然只有一个种子。
+修正停止符的四十步 pass@1 是 $\PassRlooStopOne$，低于未修正的种子 $0$。
+
+pass@1 上升而 pass@8 不上升，意味着单次采样更常碰对，八次采样里``至少一次正确''
+的概率没有一起变好。四十到一百二十步、每步四个提示，不足以把这种差别从采样噪声里分开。
+官方设置是 batch $128$、组大小 $8$、累积 $128$、$100$ 步。这里的在线批远小于那个设置。
+结论只覆盖这个预算：SFT 提供格式，短程 IPO 与 RLOO 没有给出稳定的 pass@8 增益。
+
+\section{局限}
+SFT 目标是搜索器写出的一行等式，不是数据集里那种多步 \texttt{<think>}。
+模型可以在标签内放进一条等式，却没有被要求展示搜索。偏好对来自长回答，
+和 SFT 的短回答不在同一个长度上，求和 IPO 因此不稳。
+
+RLOO 只跑了一百二十步量级，组内提示数是 $4$ 而不是 $128$。
+两个种子的 pass@8 已经相差 $\PassRlooKEightEight$ 与 $\PassRlooKEightSeedOneEight$。
+更多种子会收紧区间，但不会把这个预算变成官方的全量训练。
+评估温度 $0.6$ 与训练温度 $1$ 不同，pass@$k$ 衡量的是评估分布，不是训练时的在线奖励。
+
+进程内生成没有使用 vLLM 的连续批处理。停止符的 token 切分必须和模型真正生成的
+字节一致，否则序列级优势会记到答案标签之后的 token 上。这一点已在修正运行里单独列出。
+
+\bibliographystyle{plainnat}
+\bibliography{../references}
+
+\end{document}

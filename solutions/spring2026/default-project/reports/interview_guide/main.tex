@@ -1,0 +1,331 @@
+\documentclass[10pt,twocolumn,a4paper]{ctexart}
+\usepackage[margin=1.7cm,columnsep=0.65cm]{geometry}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{natbib}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+
+\graphicspath{{../../artifacts/figures/}}
+\setlength{\parindent}{2em}
+\setlist{nosep,leftmargin=*}
+\hypersetup{colorlinks=true,linkcolor=blue!55!black,
+  citecolor=green!45!black,urlcolor=blue!65!black}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Reasoning RL Interview Guide}
+\fancyhead[R]{ShaneLiu04}
+\fancyfoot[C]{\thepage}
+
+\newcommand{\figmaybe}[2]{%
+  \IfFileExists{../../artifacts/figures/#1.png}{%
+    \includegraphics[width=\linewidth]{#1}}{%
+    \fbox{\parbox[c][3.2cm][c]{\linewidth}{\centering\small #2}}}}
+
+\providecommand{\PassBaseOne}{--}\providecommand{\PassSftOne}{--}
+\providecommand{\PassSftEight}{--}\providecommand{\SftLossStart}{--}
+\providecommand{\SftLossEnd}{--}\providecommand{\SftEvalNll}{--}
+\providecommand{\IpoLossStart}{--}\providecommand{\IpoEvalLoss}{--}
+\providecommand{\IpoEvalAcc}{--}\providecommand{\DpoLossStart}{--}
+\providecommand{\DpoEvalAcc}{--}\providecommand{\IpoMeanEvalLoss}{--}
+\providecommand{\RlooKEightExactMean}{--}\providecommand{\RlooKEightRewardMean}{--}
+\providecommand{\PassRlooKEightOne}{--}\providecommand{\PassRlooKEightEight}{--}
+\providecommand{\PassRlooKEightSeedOneOne}{--}
+\providecommand{\PassRlooKEightSeedOneEight}{--}
+\providecommand{\PassRlooKTwoEight}{--}\providecommand{\PassRlooNoKlEight}{--}
+\providecommand{\PassRlooStopOne}{--}\providecommand{\PassRlooLongOne}{--}
+\providecommand{\PassRlooLongEight}{--}\providecommand{\PassIpoEight}{--}
+\InputIfFileExists{../results_macros.tex}{}{}
+
+\title{\vspace{-1.2em}\textbf{推理模型后训练面试指南：\\
+从可验证奖励到 SFT、DPO/IPO 与 RLOO}}
+\author{ShaneLiu04\\
+\small\url{https://github.com/ShaneLiu04}}
+\date{}
+
+\begin{document}
+\maketitle
+\thispagestyle{fancy}
+
+\begin{abstract}
+推理岗位的面试把一条后训练管线拆成可以当场写下来的几段：奖励从哪来，
+监督微调改的是哪一部分 token，偏好损失在参考策略处等于什么，
+策略梯度的基线为什么必须在组内计算，以及 pass@$k$ 和准确率差在哪里。
+本文按这个顺序整理 InstructGPT 式的 RLHF、DPO、IPO、REINFORCE、RLOO、
+GRPO 和过程奖励，并用 Countdown 上 Qwen2.5-0.5B 的实测说明每个机制
+在日志里长什么样。基座 pass@1 为 $\PassBaseOne$，SFT 之后为 $\PassSftOne$。
+IPO 在参考策略处的损失是 $\IpoLossStart$，与 $(1/(2\beta))^2$ 一致。
+短程 RLOO 的在线精确率均值是 $\RlooKEightExactMean$，两个种子的测试
+pass@8 分别是 $\PassRlooKEightEight$ 和 $\PassRlooKEightSeedOneEight$。
+这些数字用来约束回答：没有稳定增益时，不把算法说成已经超过 SFT。
+\end{abstract}
+
+\textbf{关键词：}RLHF；DPO；IPO；RLOO；GRPO；pass@k；Verifier；Process Reward
+
+\section{面试要回答的对象}
+研究岗位和工程岗位问的是同一条链路的两端。研究侧关心目标函数是否在优化
+想要的量：偏好模型会不会把概率质量推到人类没比较过的回答上，组内基线
+是不是无偏，pass@$k$ 上升时 pass@1 是否下降。工程侧关心同一条链路能不能跑完：
+回答掩码有没有把提示算进损失，参考模型是不是冻结的，梯度裁剪阈值 $0$
+会不会把更新清掉，停止符的 token 编号和模型实际生成的编号是否相同。
+
+Countdown 把这条链路收成一个可以手算的环境。数字和目标值是给定的，
+奖励由程序计算。因此可以把``奖励模型不准''和``策略梯度没有信号''分开。
+下面的每一节都先给定义和文献中的形式，再给本实验里对应的日志。
+
+\section{可验证奖励}
+人类偏好把回答映射到一个标量，再用来训练奖励模型\citep{christiano2017preferences,ziegler2019finetune,stiennon2020summarize,ouyang2022instructgpt}。
+奖励模型是一个有误差的函数。它在比较过的回答对上拟合，在分布外的长回答上可以给出
+人类不会给的高分。这是 RLHF 被反复讨论的失效方式\citep{casper2023open,zheng2023secrets}。
+
+数学和代码题可以绕开这个拟合。一个 verifier 执行模型给出的最终答案，
+或者执行中间步骤，返回对或错\citep{cobbe2021gsm8k,uesato2022outcome,lightman2023verify}。
+结果奖励只看最后的答案。过程奖励给正确的中间步骤更高的分。Lightman 等人在
+MATH 上比较二者，过程监督在搜索时更省样本。Uesato 等人指出，结果监督已经能抬高
+最终正确率，过程监督的优势更集中在需要定位错误步骤的时候。
+
+Countdown 的奖励是三档结果分，不是逐步分。没有 \texttt{<answer>} 为 $0$，
+提取到等式但数字用错或结果不对为 $0.1$，用恰好给定的数字得到目标值为 $1$。
+$0.1$ 这一档很重要。它把``会写标签''和``等式算对''拆开。SFT 之后几乎所有样本都落到
+$0.1$ 或 $1$，组内优势就来自这两档之差。若奖励只有 $0/1$，而模型还不会写标签，
+一组样本全是 $0$，优势也是 $0$。
+
+面试里可以把奖励设计说成三句话。第一，奖励必须在策略当前会访问的字符串上有方差。
+第二，格式分和正确分要分开记录，否则损失下降可能只是学会了标签。
+第三，verifier 的抽取规则要和训练时的停止符一致。答案标签后面的垃圾 token
+如果还留在损失里，序列级优势会记到它们头上。
+
+\section{SFT 与冷启动}
+SFT 是回答 token 上的因果语言模型负对数似然。位置 $t$ 的目标由 logits 的
+第 $t-1$ 位预测。提示用左填充，回答用右填充，掩码是``回答且非 padding''再右移一位。
+把提示算进损失会让模型复读题目，回答分布几乎不动。
+
+InstructGPT 把 SFT 放在奖励模型和 PPO 之前，演示数据决定了策略的初始支撑
+\citep{ouyang2022instructgpt}。Gandhi 等人把推理的冷启动说成几种可迁移的行为：
+验证、回溯、子目标、逆向。没有这些行为的 SFT 轨迹，后面的强化学习缺少可强化的模式
+\citep{gandhi2025cognitive}。DeepSeek-R1 的实验也把这件事写清楚：从基座直接做
+可验证奖励的强化学习可以长出长链推理，但那是在大模型和长训练上观察到的，
+小模型的短跑不能默认有同样的现象\citep{deepseek2025r1}。
+
+本实验的 SFT 目标是搜索器找到的一行等式，外面包上 \texttt{<think>} 和
+\texttt{<answer>}。$19\,000$ 条训练样本上，损失从 $\SftLossStart$ 降到
+$\SftLossEnd$，留出负对数似然 $\SftEvalNll$。基座 pass@1 为 $\PassBaseOne$，
+SFT 为 $\PassSftOne$，pass@8 为 $\PassSftEight$。这个提升来自格式和``用全数字写一条等式''，
+不是来自长的搜索痕迹。面试时要主动说出目标分布是什么。短等式的 SFT 不能被描述成
+已经学会了 Cognitive Behaviors 里的回溯。
+
+另一个工程细节是模板套几次。Countdown 的提示已经含有 \texttt{<|im\_start|>}。
+再套一次 chat 模板会把特殊符号嵌进文本。偏好数据的 \texttt{query} 还没有模板，
+那里又必须套。同一套数据加载不能用一个布尔值打完全部阶段。
+
+\section{从 RLHF 到 DPO}
+经典 RLHF 先在偏好对上训练奖励模型 $r_\phi(x,y)$，再用 PPO 优化
+$\mathbb{E}[r_\phi]-\beta\,\mathrm{KL}(\pi\|\pi_{\mathrm{ref}})$
+\citep{ouyang2022instructgpt,schulman2017ppo,zheng2023secrets}。
+KL 项把策略留在参考模型附近，参考模型通常是 SFT。PPO 需要价值网络或
+广义优势估计\citep{schulman2015gae}，对语言模型来说还要处理变长序列、
+裁剪和奖励归一化。工程上这是一整条分布式系统\citep{zheng2023secrets}。
+
+DPO 从同一个 KL 约束的最优策略出发，把奖励写成策略与参考策略的对数比，
+再代入 Bradley--Terry 模型，得到只含 $\pi_\theta$ 和 $\pi_{\mathrm{ref}}$ 的分类损失
+\citep{rafailov2023dpo}：
+\begin{equation}
+L_{\mathrm{DPO}}=-\log\sigma\bigl(\beta(\Delta_w-\Delta_l)\bigr),
+\end{equation}
+$\Delta(y)=\log\pi_\theta(y\mid x)-\log\pi_{\mathrm{ref}}(y\mid x)$。
+没有单独的奖励模型和在线采样。代价是：策略只能在离线对里已经出现的回答之间重新分配质量。
+对里没有的正确等式，DPO 不会去搜索。
+
+在 $\Delta=0$ 时 $L_{\mathrm{DPO}}=\log 2$。本实验第一步损失是 $\DpoLossStart$，
+与 $\log 2\approx 0.693$ 一致。验证偏好准确率是 $\DpoEvalAcc$。
+准确率接近一半，说明 chosen 的对数比并没有稳定地高于 rejected。
+这时不要把 pass@1 的小幅变化解释成偏好优化已经对齐了 verifier。
+
+DPO 的已知问题包括：损失可以在降低分类误差的同时把 chosen 和 rejected 的绝对概率一起压低。
+面试里用 $\Delta_w$ 和 $\Delta_l$ 两条曲线分开看，而不是只看 loss。
+若两者一起变负，分类间隔可能仍在变大，但模型对两条回答都更不确定。
+
+\section{IPO 的平方间隔}
+Azar 等人把一类偏好目标写成 $\Psi$-preference optimization，并指出
+Bradley--Terry 假设下的一些目标会过度移动概率\citep{azar2024ipo}。
+IPO 用平方损失把间隔固定住：
+\begin{equation}
+L_{\mathrm{IPO}}=\bigl(\Delta_w-\Delta_l-1/(2\beta)\bigr)^2.
+\end{equation}
+$\beta$ 越小，目标间隔 $1/(2\beta)$ 越大，策略被要求把 chosen 与 rejected 拉得更开，
+也更容易不稳定。$\pi=\pi_{\mathrm{ref}}$ 时损失是 $(1/(2\beta))^2$。
+$\beta=0.1$ 时这个数是 $25$。本实验的第一步就是 $\IpoLossStart$。
+这是实现测试，不是训练效果。
+
+求和的 $\Delta$ 随回答长度增长。一两百个 token 的对数概率之和，移动几个 nat
+就会让平方损失从 $25$ 跳到验证集上的 $\IpoEvalLoss$，准确率 $\IpoEvalAcc$。
+长度平均把同一目标间隔放在 token 均值上，验证损失回到 $\IpoMeanEvalLoss$，
+贴着恒等线。稳定不等于学到了偏好。它只说明优化没有炸。
+
+面试时可以这样区分 DPO 和 IPO。DPO 的梯度在间隔已经很大时饱和，因为 logistic 的尾部平坦。
+IPO 的梯度随间隔误差线性增长，没有饱和，所以对 $\Delta$ 的尺度更敏感，
+也更需要决定``和''还是``平均''。两者都依赖一个冻结的参考模型。
+参考模型若被错误地更新，或和策略不是同一套模板下的对数概率，$\Delta$ 没有意义。
+
+\section{REINFORCE、RLOO 与 GRPO}
+REINFORCE 的梯度是 $\mathbb{E}[\nabla\log\pi(a)\,(r-b)]$，
+$b$ 不依赖当前这条样本的动作时，它不改变梯度的期望，只改变方差
+\citep{williams1992reinforce}。$b$ 若用到了本条样本的奖励，估计就有偏，除非像
+leave-one-out 那样把本条从基线里拿掉。
+
+Kool 等人对 $K$ 条独立样本使用\citep{kool2019buy}
+\begin{equation}
+\hat A_i=r_i-\frac{1}{K-1}\sum_{j\neq i}r_j.
+\end{equation}
+$K=2$ 时基线就是另一条样本的奖励，方差大。$K$ 增大时基线更接近组内均值，
+但每步要生成更多条。Ahmadian 等人把这个估计用回语言模型的 RLHF，
+发现在他们的设置里 RLOO 可以匹配更复杂的 PPO，而实现只保留策略网络
+\citep{ahmadian2024rloo}。
+
+GRPO 是同一想法的另一个归一化\citep{shao2024deepseekmath,deepseek2025r1}。
+组内奖励减去均值再除以标准差，然后沿 token 做裁剪的策略梯度，并带 KL。
+RLOO 不除以标准差，也不把本条奖励放进基线。组内奖励全相等时，两者的优势都是 $0$。
+这是健康的行为，不是 bug。日志里这一步的策略损失应为 $0$。
+
+在线 RLOO 让行为策略等于当前策略，temperature 和 top-$p$ 都是 $1$，
+重要性权重为 $1$。若评估用 temperature $0.6$，那是另一个分布，
+不能把评估 pass@$k$ 当成训练奖励的无偏估计。本实验的在线精确率均值是
+$\RlooKEightExactMean$，奖励均值是 $\RlooKEightRewardMean$。
+测试 pass@1 在两个种子上是 $\PassRlooKEightOne$ 和 $\PassRlooKEightSeedOneOne$，
+pass@8 是 $\PassRlooKEightEight$ 和 $\PassRlooKEightSeedOneEight$。
+$K=2$ 的 pass@8 是 $\PassRlooKTwoEight$。无 KL 的 pass@8 是 $\PassRlooNoKlEight$。
+修正停止符后的四十步 pass@1 是 $\PassRlooStopOne$，一百二十步是 $\PassRlooLongOne$，
+pass@8 是 $\PassRlooLongEight$。短预算下种子之间的 pass@8 差距已经大于
+多数算法之间的差距。回答``RLOO 是否优于 SFT''时，要把预算和种子说出来。
+
+PPO 的裁剪是在重要性权重上\citep{schulman2017ppo}。on-policy 且权重为 $1$ 时，
+裁剪区间不改变这一步的比值。它会在后面变成 off-policy、或者复用旧样本时才起作用。
+把裁剪系数设成 $0$ 却调用 \texttt{clip\_grad\_norm\_(parameters, 0)}，
+会把全部梯度变成 $0$。梯度范数阈值和 PPO 的 ratio clip 是两个开关。
+
+\section{pass@k}
+准确率是每个提示一条贪心或低温回答对不对。pass@$k$ 是从 $n$ 条采样里
+不放回地抽 $k$ 条、至少一条正确的概率。无偏估计是
+$1-\binom{n-c}{k}/\binom{n}{k}$，要求 $n\ge k$，$c$ 是正确条数
+\citep{chen2021codex}。$n=k$ 时，这个估计退化成``$n$ 条里有没有一条正确''，
+方差是伯努利方差。$n$ 比 $k$ 大很多时方差更小。本实验的 SFT 用 $n=16$，
+其他检查点用 $n=8$，所以 pass@8 可以比较期望，不能比较单个检查点的噪声水平。
+
+pass@1 上升而 pass@8 不上升，表示单样本更常命中，多次采样的覆盖没有变好。
+推理模型的产品指标经常是 pass@1，因为用户只看一条。研究指标经常是 pass@$k$，
+因为搜索或自洽可以再用这 $k$ 条\citep{lightman2023verify,deepseek2025r1}。
+面试里先问清楚部署时看几条，再决定优化哪一个。
+
+Rejection sampling fine-tuning 和 RAFT 走另一条路：多采样，只把奖励高的回答拿去
+做 SFT\citep{dong2023raft}。它没有优势基线，也不会给低奖励样本负梯度。
+在格式已经学会、正确样本仍稀少时，它和 RLOO 的差别是：RLOO 会压低组内较差的样本，
+RAFT 只强化较好的样本。两者都需要 verifier 在采样时就能打分。
+
+\section{KL、熵与长度}
+KL$(\pi\|\pi_{\mathrm{ref}})$ 惩罚离开 SFT 或初始策略的 token 分布。
+系数过大时，在线奖励上不去。系数为零时，策略可以走到参考模型没有覆盖的字符串，
+其中包括答案标签之后的特殊符号循环。熵奖励鼓励词表上不要过早塌缩。
+系数 $0.001$ 相对序列对数概率是一个小项。本实验里去掉这两项之后，
+pass@8 并没有变差，见无 KL 的 $\PassRlooNoKlEight$。四十步还看不出正则项的长期作用。
+
+长度是另一个隐蔽的奖励。若优势加在整个序列的对数概率上，更长的错误回答
+会收到更多 token 的梯度。格式奖励 $0.1$ 又让``写很长但算错''和``写短但算错''
+得到相同的序列奖励。停止在 \texttt{</answer>} 上，是在定义回合的边界。
+本实验里 \texttt{</answer>} 有两种 BPE：不带空格是 \texttt{</}+\texttt{answer}+\texttt{>}，
+带前导空格是另一个起始 token。只登记第一种时，生成不会停。
+面试里可以把这件事说成：停止条件必须在 token 编号上核对，不能只在解码后的字符串上核对。
+
+\section{工程清单}
+训练日志里至少留这些量。SFT 留回答 token 数、训练负对数似然、留出负对数似然、
+学习率和梯度范数。偏好优化留 $\Delta_w$、$\Delta_l$、间隔、准确率、$\beta$ 和
+损失类型。第一步损失应等于恒等式，否则参考模型没有接上，或者 $\Delta$ 的
+求和方式与公式不一致。RLOO 留组内奖励均值、精确率、格式率、优势绝对值、
+策略损失、熵、KL 和重要性权重。权重在 on-policy 时应为 $1$。优势绝对值为 $0$
+的步不提供策略信息。
+
+实现上有几处容易错。因果掩码要右移。参考模型单独加载并冻结，
+\texttt{deepcopy} 在 \texttt{device\_map} 上会失败。词表上的 log-sum-exp 放在
+float32 里按时间分块，否则 $[B,T,V]$ 的 float32 张量会占满显存。
+注意力用 scaled dot-product，避免训练态把 $[B,H,T,T]$ 存下来。
+$0.5$B 模型的解码利用率可以不高，显存却会在错误的注意力实现里被打满。
+把利用率打满不是目标，把损失和停止符核对正确才是。
+
+数据侧要核对列名和模板。\texttt{query} 与已经渲染好的 \texttt{prompt} 不能混用。
+测试集 $50$ 条只用于 pass@$k$。搜索器生成 SFT 数据时，只用训练集的下标，
+并且记录无解的条数。本实验 $20\,000$ 条里无解数为 $0$。
+
+\section{怎么读这份实验}
+\begin{figure}[t]
+\centering
+\figmaybe{fig1_sft_nll}{SFT curve}
+\caption{SFT 把回答负对数似然压到留出值附近。这是格式学习的曲线，不是 pass@$k$。}
+\label{fig:sft}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\figmaybe{fig2_preference_loss}{IPO and DPO}
+\caption{左图的点线是 IPO 在参考策略处的恒等式。求和版本离开这条线，长度平均版本贴着它。}
+\label{fig:pref}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\figmaybe{fig7_passk}{pass@k bars}
+\caption{同一套 $50$ 题上的 pass@$k$。Base 为零。SFT 打开格式。短程偏好优化和 RLOO 的差别小于种子噪声。}
+\label{fig:pass}
+\end{figure}
+
+图~\ref{fig:sft} 回答``冷启动有没有发生''。损失贴住留出值，同时 pass@1 离开 $0$，
+两件事一起才说明模型开始产生可评分的等式。只看损失会把``记住搜索器的句式''说成``学会了解题''。
+
+图~\ref{fig:pref} 回答``偏好损失有没有接上公式''。第一步打中 $25$ 和 $\log 2$，
+实现是对的。之后求和 IPO 上升，是尺度问题，不是数据没有加载。长度平均把损失按住，
+准确率仍在一半附近，所以这一阶段没有可报告的偏好增益。pass@8 上 IPO 是
+$\PassIpoEight$，要和 SFT 的 $\PassSftEight$ 一起看 $n$ 的差别。
+
+图~\ref{fig:pass} 回答``在线更新有没有超过 SFT''。在本文的步数、组大小和种子数下，
+没有一个检查点在 pass@8 上稳定高于其他检查点。$K=8$ 优于 $K=2$ 这个方向在
+pass@8 上出现了，但是两个种子的 $K=8$ 自己也不重合。写进简历或面试答案时，
+范围是：在 $0.5$B、数十到一百二十步、每步四个提示的 Countdown 上，
+SFT 负责把奖励从全零变成有方差，随后的 IPO 与 RLOO 没有给出可重复的 pass@8 提升。
+
+\section{岗位上的回答方式}
+\textbf{奖励模型还要不要。}
+有 verifier 的任务优先用 verifier。人类偏好留在没有自动检查的开放生成上，
+例如摘要和对话的风格\citep{stiennon2020summarize,ouyang2022instructgpt}。
+Constitutional AI 用模型自己的原则产生偏好，仍然是一个会错的奖励
+\citep{bai2022constitutional}。数学题上再套一个奖励模型，通常是在 verifier 已经够用之后
+才考虑过程分\citep{lightman2023verify}。
+
+\textbf{DPO 和 PPO 怎么选。}
+离线对的质量高、不需要探索新回答时，DPO 或 IPO 更省系统\citep{rafailov2023dpo,azar2024ipo}。
+需要在采样里发现对里没有的解时，用 RLOO 或 GRPO 这一类在线目标
+\citep{ahmadian2024rloo,shao2024deepseekmath}。PPO 的价值网络在奖励稠密、
+信用分配很长时仍有用\citep{schulman2017ppo,zheng2023secrets}。
+Countdown 的奖励在序列末尾才知道对错，四十步的组内基线已经能给出非零优势，
+价值网络不是第一优先级。
+
+\textbf{pass@1 掉了但 pass@8 升了。}
+这是多样性换覆盖。产品若只展示一条，要同时看多数投票或重排序能不能把 pass@8 的覆盖
+收成 pass@1。只报其中一个指标会让两个岗位听到相反的结论。
+
+\textbf{损失是恒等式但准确率是一半。}
+实现通过了检查，优化还没有离开参考策略，或者离开的方向不是 chosen。
+下一步看 $\Delta_w$ 与 $\Delta_l$ 的符号，而不是把学习率加大到损失爆炸。
+本实验里求和 IPO 的验证损失升到 $\IpoEvalLoss$，就是后一种情况。
+
+\textbf{小模型实验能说明什么。}
+它能说明掩码、恒等式、优势为零的条件和停止符。它不能说明 $0.5$B 上失败的方法
+在更大模型和官方 batch 上也会失败，也不能把四十步的波动说成算法排序。
+DeepSeek-R1 和 DeepSeekMath 的结果对应的是另一种规模\citep{shao2024deepseekmath,deepseek2025r1,qwen2025qwen25}。
+面试里把``我核对过的不变量''和``我还没有跑的规模''分成两句。
+
+\bibliographystyle{plainnat}
+\bibliography{../references}
+
+\end{document}

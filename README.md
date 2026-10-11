@@ -1,5 +1,7 @@
 # Stanford CS224R · Deep Reinforcement Learning
 
+![CS224R study notes](assets/cs224r-cover.jpg)
+
 > 深度强化学习自学仓库：完整镜像 Stanford CS224R（Spring 2026 / 2025 / 2023）官方讲义、
 > 作业 handout 与 starter code，配套 **18 讲中文笔记**、**作业实现指南**、**论文/工具索引** 与
 > **可复现实验卡片**。面向「能推导、能比较、能实现」的面试与科研复习方式组织。
@@ -310,6 +312,32 @@ medium 使用修复后的 `antmaze-medium-diverse-v2`，因为公开的 v0 HDF5 
 ![Homework 3 AntMaze 回报](solutions/spring2026/homework3-offline-rl/artifacts/figures/fig1_antmaze_returns.png)
 
 ![Homework 3 拼接轨迹](solutions/spring2026/homework3-offline-rl/artifacts/figures/fig7_stitching_trajectories.png)
+
+## Default Project 完整复现
+
+Spring 2026 Default Project 在 Countdown 上走完 SFT、IPO/DPO 和 RLOO，并用无偏 pass@k
+比较检查点。实现与实验位于：
+
+- [实现与复现说明](solutions/spring2026/default-project/README.md)
+- [训练与评估代码](solutions/spring2026/default-project/code/)
+- [原始指标与实验图](solutions/spring2026/default-project/artifacts/)
+- [作业学术报告（PDF）](solutions/spring2026/default-project/reports/assignment_report/main.pdf)
+- [推理后训练面试知识总结（PDF）](solutions/spring2026/default-project/reports/interview_guide/main.pdf)
+
+基座 Qwen2.5-0.5B 在 50 道测试题上的 pass@k 为 0。搜索等式上的一轮 SFT 把 pass@1 抬到 0.188，
+留出负对数似然为 0.067。$\beta=0.1$ 的 IPO 在参考策略处损失为 25，与 $(1/(2\beta))^2$ 一致；
+序列对数概率求和的版本随后不稳定，长度平均把损失维持在恒等式附近，偏好准确率仍约 0.5。
+RLOO 的两个种子和 120 步修正运行都没有在 pass@8 上稳定超过 SFT。
+曲线由 `metrics.jsonl` 与 pass@k JSON 生成。
+
+![Countdown pass@k](solutions/spring2026/default-project/artifacts/figures/fig7_passk.png)
+
+![SFT 负对数似然](solutions/spring2026/default-project/artifacts/figures/fig1_sft_nll.png)
+
+![IPO 与 DPO 损失](solutions/spring2026/default-project/artifacts/figures/fig2_preference_loss.png)
+
+该目录包含个人作业实现，仅用于自学与求职知识整理。正在修读课程的学习者应遵守课程
+honor code，不应直接使用或公开提交其中的 solution。
 
 ---
 
