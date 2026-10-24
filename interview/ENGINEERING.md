@@ -25,20 +25,39 @@
 | 偏好损失下降但准确率 0.5 | 序列求和的 `Δ` 被长回答主导 | 改长度平均，同时监控 accuracy |
 | KL 突然爆炸 | 参考模型与策略的 tokenizer/模板不一致，或 bf16 下 log-prob 精度不足 | 用 fp32 算 log-softmax，比较两者在同一序列上的 log-prob |
 | 奖励涨、真实正确率不涨 | reward hacking（格式分、长度） | 拆开奖励构成画图 |
+| 一组里全对或全错仍在更新 | 优势按整个 batch 归一化，而不是按 prompt | GRPO / RLOO 的均值和标准差按组算 |
+| KL 项让策略加速偏离参考 | KL 的符号反了，惩罚变成了奖励 | 参考策略处 KL 应为 0，偏离后损失应上升 |
+| pad 被学进模型 | label 没把 padding 位置标成忽略 | 检查 loss mask 在 pad 上是否为 0 |
 
 ## 3. 显存账
 
-- **权重与优化器**：参数量 `N`，bf16 权重 `2N` 字节，AdamW 的 fp32 主权重与两个动量
-  `12N`，梯度 `2N`（或 fp32 `4N`）。0.5B 模型约 8 GB，7B 约 112 GB（需 ZeRO/FSDP 分片）。
-- **激活**：与 `batch × seq × hidden × layers` 成正比；朴素注意力额外 `B·H·T²`。
-  用 scaled dot-product / FlashAttention 避免物化注意力矩阵，或 gradient checkpointing。
-- **logits**：`B × T × |V|`，Qwen 词表约 15 万，float32 下极大。按时间分块算
-  log-sum-exp，只保留所需 token 的 log-prob。
-- **KV cache（推理）**：`2 × layers × kv_heads × head_dim × T × B × 2 字节`。
-  vLLM 用 PagedAttention 按块分配，并在启动时按 `gpu_memory_utilization` 预留。
-- **训练与推理同卡**：PyTorch caching allocator 不会把缓存还给其他进程。本仓库的 RL
-  训练保留约 89 GB 后，同卡 vLLM 无法初始化，只能串行，或像 veRL/OpenRLHF 那样在
-  同一进程内切换（offload 训练状态、sleep/wake 推理引擎）。
+按 `N` 个参数估算，面试时把乘法写出来。下面用 Qwen2.5-0.5B 的数量级：`N ≈ 5×10^8`，
+24 层，14 个注意力头，2 个 KV 头，头维度 64，词表 151936。
+
+**一个带 AdamW 的 bf16 模型，静态部分：**
+
+| 张量 | 字节 | 0.5B |
+| --- | --- | --- |
+| bf16 权重 | `2N` | 1 GB |
+| fp32 主权重 | `4N` | 2 GB |
+| 一阶矩、二阶矩 | `4N + 4N` | 4 GB |
+| bf16 梯度 | `2N` | 1 GB |
+| 合计 | `16N` | 8 GB |
+
+参考模型不更新，只有 1 GB 权重。7B 按同样的 `16N` 约 112 GB，单卡放不下，要 ZeRO 或 FSDP。
+
+**容易被错当成权重的两块：**
+
+- logits：`B × T × |V| × 4` 字节（float32）。`B=4`、`T=512` 约 1.2 GB；`T=4096` 约 10 GB。
+  只对需要的 token 做分块 log-sum-exp，不要留整张表。
+- 朴素注意力分数：一层是 `B × H × T × T × 2` 字节。`B=4`、`T=4096`、24 层都保存给反传时大约几十 GB。
+  scaled dot-product attention 不算完整张分数矩阵。`T=512` 时这一项不大，所以短序列 OOM 先查 logits。
+- KV cache：`2 × L × n_kv × d × T × B × 2` 字节。上面的配置、`T=2048`、一条序列大约 24 MB。
+  本仓库训练进程留下的约 89 GB 是激活、logits 和 caching allocator，不是 KV cache。
+
+vLLM 启动时按 `gpu_memory_utilization × 整卡容量` 预留，不读取别的进程的占用。
+`torch.cuda.empty_cache()` 只释放调用者自己的缓存。同卡要交替训练和推理时，放在同一进程里
+offload 训练状态并 sleep 推理引擎（veRL、OpenRLHF 的做法），或者干脆串行。
 
 ## 4. 吞吐
 
@@ -66,7 +85,10 @@
   会把均值拉偏，图中保留每个种子。
 - **按种子先聚合**：不同种子评估步数不齐时，先对每个种子取尾部均值，再跨种子统计。
 - **测试集隔离**：Countdown 测试题不进训练；留出集用于选检查点，测试集只报一次。
+- **同口径比较**：方法 A 的 pass@1 不和 方法 B 的 pass@8 放在一个格子里比。
 - **数字只来自脚本**：原始 CSV/JSONL → 绘图脚本 → 图与 LaTeX 宏 → 报告。
+- **种子步数不齐**：先在每个种子内部取尾部均值，再跨种子求 mean±std。全局 `dropna` 后取最后几行，
+  会只剩下跑得最久的种子。
 
 ## 7. 实验管理
 

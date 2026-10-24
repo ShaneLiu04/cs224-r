@@ -81,6 +81,18 @@ SFT 之后几乎每条样本都有答案标签。绿色部分才是等式算对�
 
 ![pass@k](artifacts/figures/fig7_passk.png)
 
+## 扩展：长 think SFT、RLOO / GRPO / Dr. GRPO
+
+留出集 500 题、每题 16 条样本。长 think SFT 的 pass@1 是 0.272，pass@16 是 0.662。
+从它出发的长程 RL 把 pass@1 抬到 0.52–0.54，pass@16 仍在 0.64–0.71，和 SFT 的 0.662 同一量级。
+Dr. GRPO 的 pass@1 是 0.540。短等式 SFT 上的 RLOO 停在 0.259，pass@16 只有 0.314。
+
+原始评测、训练指标和图在 `artifacts/extension/`。长度分布图没有放进来，因为逐条样本文件太大，没有同步。
+
+![留出集 pass@k](artifacts/extension/figures/ext_fig1_passk_heldout.png)
+
+![RL 训练曲线](artifacts/extension/figures/ext_fig7_rl_curves.png)
+
 ## 本地测试
 
 ```bash
