@@ -1,6 +1,8 @@
 # CS229-R
 
-![面向面试的深度强化学习](assets/cs229r-cover.png)
+<p align="center">
+  <img src="assets/cs229r-cover.png" alt="CS229-R · 面向面试的深度强化学习" width="100%">
+</p>
 
 面向面试的深度强化学习。笔记、公式和多种子实验只为一件事服务：当场推导，比较算法，把曲线上的数字讲清楚。
 

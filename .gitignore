@@ -32,6 +32,15 @@ Thumbs.db
 *.key
 credentials.json
 
+# Local agent instructions and private notes
+AGENTS.md
+CLAUDE.md
+.claude/
+.opencode/
+.cursor/
+.aider*
+*.local.md
+
 # My own training artifacts (keep official starter-code fixtures)
 solutions/**/data/
 solutions/**/datasets/
