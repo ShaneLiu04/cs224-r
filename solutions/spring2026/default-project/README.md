@@ -81,6 +81,13 @@ SFT 之后几乎每条样本都有答案标签。绿色部分才是等式算对�
 
 ![pass@k](artifacts/figures/fig7_passk.png)
 
+## 本地测试
+
+```bash
+cd solutions/spring2026/default-project
+python -m pytest -q tests   # 目标函数、RL 项（优势/KL/熵）、样本选择，共 16 个测试，CPU 即可
+```
+
 ## 复现实验时会碰到的点
 
 - 提示若已经含有 chat 模板，SFT 必须关掉第二次套用。偏好数据的 `query` 还没有模板，那里要套。

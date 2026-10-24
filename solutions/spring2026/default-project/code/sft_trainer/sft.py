@@ -61,8 +61,8 @@ def clear_cache(model):
     torch.cuda.empty_cache()
     gc.collect()
 
-def save_checkpoint(model, tokenizer, optimizer, scheduler, output_dir):
-    """Save model/tokenizer plus optimizer/scheduler states."""
+def save_checkpoint(model, tokenizer, optimizer, scheduler, output_dir, save_states=True):
+    """Save model/tokenizer, and optionally optimizer/scheduler states."""
     os.makedirs(output_dir, exist_ok=True)
 
     model_dir = os.path.join(output_dir, 'model')
@@ -72,6 +72,8 @@ def save_checkpoint(model, tokenizer, optimizer, scheduler, output_dir):
     tokenizer.save_pretrained(model_dir)
     print(f"Model and tokenizer saved to {model_dir}")
 
+    if not save_states:
+        return
     torch.save({
         'scheduler': scheduler.state_dict(),
         'optimizer': optimizer.state_dict(),
@@ -92,6 +94,7 @@ def train(
     gradient_accumulation_steps=1, 
     gradient_clipping=1.0,
     max_steps=0,
+    save_train_states=True,
 ):
     device = next(model.parameters()).device
     metrics_path = os.path.join(output_dir, "metrics.jsonl")
@@ -160,11 +163,13 @@ def train(
         })
         if save_model:
             epoch_dir = os.path.join(output_dir, f"epoch_{epoch}")
-            save_checkpoint(model, tokenizer, optimizer, scheduler, epoch_dir)
+            save_checkpoint(model, tokenizer, optimizer, scheduler, epoch_dir,
+                            save_states=save_train_states)
         if max_steps and global_step >= max_steps:
             break
     if save_model:
-        save_checkpoint(model, tokenizer, optimizer, scheduler, output_dir)
+        save_checkpoint(model, tokenizer, optimizer, scheduler, output_dir,
+                        save_states=save_train_states)
 
 
 def evaluate_sft(model, dataloader, batch_loss, max_batches=32):
@@ -207,6 +212,7 @@ def main():
     parser.add_argument('--gradient_clipping', type=float, default=1.0)
     parser.add_argument('--max_steps', type=int, default=0)
     parser.add_argument('--apply_chat_template', type=int, default=1)
+    parser.add_argument('--save_train_states', type=int, default=1)
     args = parser.parse_args()
 
     wandb.init(project=args.wandb_project, name=args.wandb_name)
@@ -251,6 +257,7 @@ def main():
         args.gradient_accumulation_steps, 
         args.gradient_clipping,
         args.max_steps,
+        bool(args.save_train_states),
     )
 
 if __name__ == "__main__":

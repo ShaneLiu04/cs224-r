@@ -103,6 +103,23 @@ def rloo_advantages(rewards, group_size):
     return (grouped - baseline).reshape(-1)
 
 
+def grpo_advantages(rewards, group_size, eps=1e-4, scale_by_std=True):
+    """GRPO advantage (r - mean) / (std + eps) within each contiguous group.
+
+    scale_by_std=False gives the mean-centred variant (Dr. GRPO), which equals
+    RLOO up to the factor (G - 1) / G.
+    """
+    if group_size < 2:
+        raise ValueError("group_size must be >= 2")
+    if rewards.numel() % group_size != 0:
+        raise ValueError("reward count must be divisible by group_size")
+    grouped = rewards.view(-1, group_size)
+    centred = grouped - grouped.mean(dim=1, keepdim=True)
+    if scale_by_std:
+        centred = centred / (grouped.std(dim=1, keepdim=True) + eps)
+    return centred.reshape(-1)
+
+
 def preference_loss(delta_w, delta_l, beta, loss_type):
     """IPO square loss or DPO logistic loss on the pairwise log-ratio."""
     margin = delta_w - delta_l

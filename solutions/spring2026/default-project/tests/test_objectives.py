@@ -8,6 +8,7 @@ CODE = os.path.join(os.path.dirname(__file__), "..", "code")
 sys.path.insert(0, CODE)
 from countdown_objectives import (
     causal_token_logprobs,
+    grpo_advantages,
     masked_nll,
     preference_loss,
     response_mask,
@@ -72,6 +73,23 @@ def test_rloo_advantages_match_leave_one_out():
     assert torch.allclose(advantages, torch.tensor([1.0, -1.0, 0.0, 0.0, 0.0, 0.0]))
     equal = rloo_advantages(torch.tensor([0.1, 0.1, 0.1, 0.1]), 4)
     assert torch.allclose(equal, torch.zeros(4))
+
+
+def test_grpo_advantages_normalise_within_group():
+    rewards = torch.tensor([1.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.1, 1.0])
+    adv = grpo_advantages(rewards, 4)
+    grouped = adv.view(2, 4)
+    assert torch.allclose(grouped.mean(dim=1), torch.zeros(2), atol=1e-6)
+    assert torch.allclose(grouped.std(dim=1), torch.ones(2), atol=1e-3)
+    assert torch.allclose(grpo_advantages(torch.full((4,), 0.1), 4), torch.zeros(4))
+
+
+def test_mean_centred_grpo_is_scaled_rloo():
+    torch.manual_seed(0)
+    rewards = torch.rand(24)
+    g = 8
+    centred = grpo_advantages(rewards, g, scale_by_std=False)
+    assert torch.allclose(centred, rloo_advantages(rewards, g) * (g - 1) / g, atol=1e-6)
 
 
 def test_sequence_logprob_is_the_sum_unless_averaged():
