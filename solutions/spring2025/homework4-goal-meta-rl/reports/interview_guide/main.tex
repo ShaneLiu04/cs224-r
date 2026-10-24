@@ -1,0 +1,183 @@
+\documentclass[10pt,twocolumn,a4paper]{ctexart}
+\usepackage[margin=1.7cm,columnsep=0.65cm]{geometry}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{natbib}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+
+\graphicspath{{../../artifacts/figures/}}
+\setlength{\parindent}{2em}
+\setlist{nosep,leftmargin=*}
+\hypersetup{colorlinks=true,linkcolor=blue!55!black,
+  citecolor=green!45!black,urlcolor=blue!65!black}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Goal-Conditioned \& Meta-RL Interview Guide}
+\fancyhead[R]{ShaneLiu04}
+\fancyfoot[C]{\thepage}
+
+\title{\vspace{-1.2em}\textbf{Goal-Conditioned RL 与 Meta-RL 面试指南：\\
+从 HER 的重标注到 DREAM 的信息瓶颈}}
+\author{ShaneLiu04\\
+\small\url{https://github.com/ShaneLiu04}}
+\date{}
+
+\begin{document}
+\maketitle
+\thispagestyle{fancy}
+
+\begin{abstract}
+本文整理两类“条件化”强化学习在面试中的核心问题。Goal-conditioned RL 把目标 $g$
+放进价值函数的输入，稀疏奖励下的关键是 hindsight relabeling：失败的轨迹对另一个目标
+是成功的示范。Meta-RL 把任务 $\mu$ 隐藏起来，策略必须先探索再利用；关键是探索
+怎样获得训练信号。我们以 CS224R 2025 Homework 4 的实测为线索：bit flipping
+上 HER 把 $15$ 与 $25$ 位任务的成功率从 $0$ 提到 $1$；Sawyer Reach 的稠密奖励让
+无 HER 的基线也能部分成功；网格公交任务上 RL$^2$ 停在直接步行的回报 $0.1$
+附近，DREAM 达到最优的 $0.7$。文中给出每个机制的损失、可检查的日志量和常见
+失败模式，并附一份追问清单。
+\end{abstract}
+
+\textbf{关键词：}UVFA；Hindsight Experience Replay；Relabeling；RL$^2$；DREAM；
+Information Bottleneck；Exploration
+
+\section{Goal-conditioned RL 的形式化}
+在 goal-conditioned MDP 中，奖励 $r(s,a,g)$ 依赖一个在每个 episode 开始时采样的
+目标 $g\sim p(g)$\citep{kaelbling1993goals}。策略与价值写成 $\pi(a\mid s,g)$、
+$Q(s,a,g)$，即 universal value function approximator（UVFA）
+\citep{schaul2015uvfa}。实现上最简单的做法是把 $[s;g]$ 拼成一个向量送进 Q 网络，
+本作业的 DQN 正是这样：bit flipping 的输入维度是 $2n$，输出 $n$ 个翻转动作的 Q 值
+\citep{mnih2015dqn}。
+
+\paragraph{为什么稀疏奖励难。}bit flipping 的奖励只有 $0$（到达）和 $-1$（未到达），
+episode 长度为 $n$。从均匀随机的起点出发，随机策略恰好命中目标的概率约为
+$2^{-n}$ 量级。$n=15$ 时，每个 epoch $16$ 条轨迹几乎从不出现 $r=0$，所有 TD 目标都是
+$-1+\gamma\max Q$，Q 函数对动作完全没有偏好，greedy 策略不会改进。这不是函数近似
+能力的问题，而是数据里没有任何成功信号。追问常见的答案“加 $\varepsilon$-greedy”
+不能解决：探索的覆盖率仍是指数级稀疏。
+
+\section{Hindsight Experience Replay}
+HER 的观察是：一条没有到达 $g$ 的轨迹，到达了它自己经过的状态
+\citep{andrychowicz2017her}。把转移 $(s_t,a_t,s_{t+1},g)$ 复制一份并把目标换成
+$g'=\phi(\tau)$，奖励重算为 $r(s_{t+1},g')$，就得到了成功的示范。由于 DQN 是
+off-policy 的，重标注后的转移与原转移同样合法：Bellman 方程对每一个目标都成立，
+重标注只是改变了“在哪个目标上做备份”。
+
+\paragraph{目标选择策略。}作业实现了三种：
+\begin{itemize}
+\item \texttt{final}：$g'=s_T$，每条轨迹只产生一个新目标；
+\item \texttt{future}：$g'=s_{j}$，$j\sim\mathcal{U}\{t+1,\ldots,T\}$，保证 $g'$ 从
+$s_t$ 出发可达；
+\item \texttt{random}：$g'=s_j$，$j$ 在整条轨迹上均匀采样，包括过去的状态。
+\end{itemize}
+三者的差别在新目标的分布：\texttt{future} 的 $g'$ 与 $s_t$ 的距离较近且可达，产生
+大量短视距的正样本，原论文因此推荐它，并用 $k=4$ 的重标注比例
+\citep{andrychowicz2017her,plappert2018multigoal}。\texttt{random} 会选到过去的状态，
+在 bit flipping 里过去状态依然可达（翻回去即可），所以不会产生不可达目标；在不可逆
+环境里它会产生虚假的不可达目标。\texttt{final} 每条轨迹只有一个目标，正样本较少，
+但在本任务上已经足够。我们的实测中三种 HER 在 $6/15/25$ 位上最终成功率都接近 $1$，
+差别主要体现在收敛速度。
+
+\paragraph{偏差。}HER 改变了训练目标的分布：$p(g')$ 由行为策略经过的状态决定，
+而不是任务的 $p(g)$。在确定性环境中 Bellman 方程对任意 $g'$ 都正确，因此偏差只体现在
+“哪些目标学得更好”；在随机环境中，按结果重标注会让价值偏乐观，因为只保留了
+恰好到达 $g'$ 的那次随机结果\citep{eysenbach2020rewriting,li2020generalized}。
+面试中可以把它与 GCSL 对照：GCSL 直接对重标注轨迹做监督学习，不需要价值函数，
+但在随机环境里同样会学到偏乐观的策略\citep{ghosh2021gcsl}。
+
+\paragraph{重标注比例 $k$。}每条原始转移附带 $k$ 条重标注转移，正样本比例随 $k$
+增大。$k$ 过大时，回放缓冲区几乎全是“自己经过的目标”，任务目标的样本占比过低；
+$k$ 过小时，稀疏任务收敛慢。我们在 $15$ 位任务上扫描了 $k\in\{1,2,4,8\}$，见作业报告。
+
+\section{稠密奖励与 Sawyer Reach}
+Sawyer Reach 用 MuJoCo 2.1 仿真机械臂末端在平面内移动，作业把连续动作离散成 $4$
+个方向\citep{todorov2012mujoco,nair2018rig}。奖励是 $-\lVert x-g\rVert$，成功阈值
+由环境给出。这是稠密奖励：每一步都告诉智能体离目标有多远，所以无 HER 的 DQN
+也能学到“朝目标移动”。HER 在这里提供的是更多目标上的训练样本，提升的是样本效率
+和末端精度，而不是从零到一。这一对比是面试中的经典追问：\emph{HER 的收益与奖励
+稀疏程度成正比}。稠密奖励的代价是需要设计距离度量；在图像观测上，RIG 用 VAE 的
+隐空间距离代替\citep{nair2018rig}，TDM 则把“到目标的时间”当作价值\citep{pong2018tdm}。
+
+\section{Meta-RL：把任务当隐变量}
+Meta-RL 在任务分布 $p(\mu)$ 上训练，测试时面对未见过的 $\mu$，需要在少量交互内
+适应\citep{beck2023survey}。本作业是“一个探索 episode + 一个利用 episode”的设定：
+只计利用 episode 的回报，探索 episode 的回报无关紧要。最优解是先用探索 episode
+获取识别任务所需的信息，再利用这些信息。
+
+\paragraph{Black-box：RL$^2$。}RL$^2$ 用一个 RNN 跨 episode 地接收
+$(s_t,a_{t-1},r_{t-1},d_{t-1})$，隐状态在探索与利用 episode 之间不重置，目标是
+两段回报的总和\citep{duan2016rl2,wang2016learning}。它的表达能力足以表示 Bayes 最优
+策略\citep{zintgraf2020varibad,humplik2019meta}，但优化上有一个鸡生蛋问题：
+探索行为只有在利用策略已经会使用这些信息时才有回报；利用策略只有在探索收集到
+信息时才能学会使用。训练早期两者都很差，探索得不到任何梯度信号，于是收敛到
+“忽略任务信息、直接步行到目标”的局部最优。我们在网格任务上观察到的 RL$^2$
+测试回报正好停在步行回报 $0.1$ 附近。
+
+\paragraph{Decoupled：DREAM。}DREAM 利用训练时可见的问题 ID $\mu$ 打破这个循环
+\citep{liu2021dream}。
+\begin{enumerate}
+\item 利用策略 $\pi^{\text{task}}(a\mid s,z)$ 以编码 $z\sim F_\psi(z\mid\mu)$ 为条件
+训练。编码器上加信息瓶颈惩罚，使 $z$ 只保留解决任务所需的信息（这里是公交
+目的地），而不是 $\mu$ 的全部比特\citep{alemi2017vib}。
+\item 探索策略最大化 $I(z;\tau^{\exp})$ 的变分下界
+$\mathbb{E}[\log q_\omega(z\mid\tau^{\exp})]$\citep{barber2003im}。解码器取单位方差
+高斯时，$\log q$ 等于 $-\lVert g_\omega(\tau)-\mathrm{sg}(z)\rVert^2$ 加常数。
+\item 把下界按时间展开成望远镜和，每一步的内在奖励是信息增益
+$r_t=\lVert g(\tau_{:t})-z\rVert^2-\lVert g(\tau_{:t+1})-z\rVert^2$。
+\end{enumerate}
+这样探索策略在训练一开始就有稠密的训练信号：走到地图格子的那一步，解码误差骤降，
+内在奖励为正。实现上要注意两点：解码器损失里的 $z$ 必须 stop-gradient，否则编码器
+会把 $z$ 推向解码器容易预测的平凡解；奖励的符号是“前一步误差减后一步误差”，写反
+会让探索策略主动回避信息。
+
+\paragraph{信息瓶颈与每步惩罚。}去掉瓶颈后，$z$ 可以把 $24$ 个任务 ID 的全部信息编码进去，
+包括与当前目标无关的公交。探索策略被要求恢复这些冗余比特，目标变难；利用策略
+也可能依赖 ID 中的无关细节。作业的 starter 用 $\max(\lVert z\rVert^2,10)$ 加编码噪声实现
+瓶颈。另一个容易混淆的超参是探索奖励中的每步惩罚 $c$（论文式 (5)，默认 $0.1$）：
+它不改变信息量，只让“不再获得信息的步”带负回报。我们把 $c$ 设为 $0$ 后，元测试回报
+仍为最优的 $0.7$，但探索 episode 总是用满 $10$ 步；$c=0.1$ 时有种子学会读完地图就结束
+（$3$ 步）。面试时要能区分这两个旋钮各自控制什么。
+
+\section{与其他 meta-RL 方法的关系}
+MAML 在梯度空间做适应，探索依靠内循环的策略梯度噪声\citep{finn2017maml}；
+E-MAML 与 MAESN 尝试把探索放进元目标\citep{stadie2018ermaml,gupta2018maesn}。
+PEARL 用概率上下文变量做后验采样，探索相当于 Thompson sampling，在需要“先付出代价
+获取信息”的任务上不是最优的\citep{rakelly2019pearl}。VariBAD 学习任务后验的
+变分近似并在 belief 上做规划，与 DREAM 一样把任务推断显式化
+\citep{zintgraf2020varibad}。大规模的 black-box 路线（AdA）说明，只要任务分布与
+算力足够，RNN/Transformer 仍能学出人类时间尺度的适应\citep{team2023ada}。
+
+\section{工程清单}
+\begin{itemize}
+\item HER：重标注时 \texttt{copy()} 所有 numpy 数组；新目标取 \texttt{next\_state}；
+奖励用环境的奖励函数重算，而不是复制原奖励。
+\item 记录正样本比例（$r=0$ 的转移占比）与成功率；前者为 $0$ 时任何超参都无效。
+\item DQN 的目标网络、$\gamma=0.98$ 与有限 horizon：bit flipping 没有终止掩码，
+价值下界约为 $-1/(1-\gamma)$。
+\item DREAM：同时看解码损失与测试回报。解码损失下降而回报不升，说明利用策略没学会
+使用 $z$；回报上升而解码损失不降，说明利用策略在绕过 $z$。
+\item RL$^2$：检查测试 episode 长度。若与“直接步行”的步数一致，说明探索段被浪费。
+\end{itemize}
+
+\section{追问清单}
+\begin{enumerate}
+\item HER 为什么要求 off-policy 算法？能否用于 PPO？（需要重要性采样修正，或改用
+GCSL 式的监督目标\citep{ghosh2021gcsl}。）
+\item \texttt{future} 与 \texttt{random} 在不可逆环境里有何差别？
+\item 稠密奖励下 HER 还有用吗？收益来自哪里？
+\item RL$^2$ 为什么能表示 Bayes 最优策略，却学不到？
+\item DREAM 的内在奖励为什么是信息增益而不是“解码误差的负值”？两者的累计和
+有何不同？
+\item 训练时没有问题 ID 时，DREAM 还能用吗？（可以用任务的奖励/动力学特征代替，
+或退化为 VariBAD 式的后验推断。）
+\item 信息瓶颈的系数过大或过小分别会怎样？它和每步惩罚 $c$ 有什么区别？
+\end{enumerate}
+
+\bibliographystyle{plainnat}
+\bibliography{../references}
+
+\end{document}

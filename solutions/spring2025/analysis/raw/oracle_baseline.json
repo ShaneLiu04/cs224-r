@@ -1,0 +1,32 @@
+{
+ "PointmassEasy-v0/eps0.0": {
+  "return": -18.35,
+  "success": 1.0,
+  "distinct_cells": 13.35
+ },
+ "PointmassEasy-v0/eps0.2": {
+  "return": -22.3,
+  "success": 1.0,
+  "distinct_cells": 15.85
+ },
+ "PointmassMedium-v0/eps0.0": {
+  "return": -67.2,
+  "success": 1.0,
+  "distinct_cells": 22.55
+ },
+ "PointmassMedium-v0/eps0.2": {
+  "return": -87.9,
+  "success": 0.9,
+  "distinct_cells": 25.8
+ },
+ "PointmassHard-v0/eps0.0": {
+  "return": -55.9,
+  "success": 0.95,
+  "distinct_cells": 34.05
+ },
+ "PointmassHard-v0/eps0.2": {
+  "return": -64.95,
+  "success": 1.0,
+  "distinct_cells": 39.3
+ }
+}

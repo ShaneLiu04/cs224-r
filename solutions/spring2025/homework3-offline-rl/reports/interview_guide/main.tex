@@ -1,0 +1,163 @@
+\documentclass[10pt,twocolumn,a4paper]{ctexart}
+\usepackage[margin=1.7cm,columnsep=0.65cm]{geometry}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{natbib}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+
+\graphicspath{{../../artifacts/figures/}}
+\setlength{\parindent}{2em}
+\setlist{nosep,leftmargin=*}
+\hypersetup{colorlinks=true,linkcolor=blue!55!black,
+  citecolor=green!45!black,urlcolor=blue!65!black}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Data-Centric Offline RL Interview Guide}
+\fancyhead[R]{ShaneLiu04}
+\fancyfoot[C]{\thepage}
+
+\title{\vspace{-1.2em}\textbf{数据决定上限：探索数据、CQL 与 IQL 的面试指南}}
+\author{ShaneLiu04\\
+\small\url{https://github.com/ShaneLiu04}}
+\date{}
+
+\begin{document}
+\maketitle
+\thispagestyle{fancy}
+
+\begin{abstract}
+Offline RL 的面试通常从算法开始：CQL 的正则为什么能压低外推，IQL 的 expectile 为什么
+不查询分布外动作。工程上更常见的追问是数据：同一个算法换一份数据集，回报可以从
+“永远到不了目标”变成接近最优。本文以 CS224R 2025 Homework 3 的 PointMass 实验为
+线索，把三件事放在一起讲：无监督探索（RND 与随机策略）决定了数据覆盖；离散动作
+CQL 的 logsumexp 正则在 $\alpha=0$ 时退化为离线 DQN 并发生过估计；IQL 的 expectile
+在数据只覆盖部分路径时如何选择上分位。每一节都给出可检查的日志量与追问。
+\end{abstract}
+
+\textbf{关键词：}Offline RL；Exploration Data；RND；CQL；IQL；Coverage；Pessimism
+
+\section{两阶段设定}
+作业把一次运行拆成两段。前一段是无监督探索：智能体只最大化内在奖励，环境奖励不进入
+探索 critic。随机探索在 \texttt{learning\_starts} 之前每步都均匀采样动作；RND 探索在
+$\varepsilon=0.2$ 之外执行探索 critic 的 argmax。IQL 探索 $2\times10^4$ 步，命令不带
+\texttt{--offline\_exploitation}，利用阶段仍以 $\varepsilon=0.2$ 的策略继续写入缓冲区，
+实际上是 offline-to-online 的设定\citep{lee2022offline2online}。CQL 探索 $10^4$ 步后
+缓冲区冻结，属于严格的 offline RL。
+
+一个值得在面试里讲的细节：2025 starter 的 CQL agent 把探索策略的采集代码注释掉了，
+每一步都调用 \texttt{env.get\_optimal\_action}，即按全源最短路距离贪心的专家控制器。
+所以 CQL 的 \texttt{--use\_rnd} 只改变 critic 的训练起点，不改变数据。发现方式很朴素：
+三组 CQL 的状态密度图逐像素相同。先画数据、再调算法，是 offline RL 工程的第一条纪律。
+
+这种设定是 ExORL 的缩小版：先用与任务无关的探索算法采数据，再在同一份数据上用不同
+奖励做离线学习\citep{yarats2022exorl,laskin2021urlb}。ExORL 的主要结论是
+\emph{改数据比改算法更有效}：在探索性数据上，连普通的 TD3 都能接近 offline 专用算法。
+
+\section{RND：用预测误差近似计数}
+RND 固定一个随机初始化的目标网络 $f^*(s)$，训练预测网络 $\hat f_\phi$ 在缓冲区状态上
+拟合它，奖励为 $\lVert\hat f_\phi(s')-f^*(s')\rVert$\citep{burda2019rnd}。见过越多次的
+状态预测误差越小，所以它是伪计数的一种平滑近似\citep{bellemare2016count,tang2017exploration}。
+与 ICM 相比，RND 的预测目标是确定性的，不受环境随机性（noisy TV）影响
+\citep{pathak2017icm}。实现细节：
+\begin{itemize}
+\item 奖励要做归一化（作业用滑动标准差），否则不同阶段的量级差几个数量级；
+\item 目标网络与预测网络使用不同的初始化，避免一开始误差就接近 $0$；
+\item RND 奖励是非平稳的：预测网络在学，奖励在衰减，探索 critic 必须持续更新。
+\end{itemize}
+最大熵探索给出另一种理论视角：理想的无监督探索最大化状态访问分布的熵
+\citep{hazan2019maxent}。均匀随机策略在迷宫里的状态分布高度集中在起点附近，
+因为扩散的半径只随 $\sqrt{t}$ 增长；RND 主动走向低访问区域，覆盖面更大。
+
+\section{数据覆盖与可学性}
+理论上，悲观的 offline RL 只需要数据覆盖最优策略的状态动作分布，而不需要覆盖全部
+\citep{jin2021pessimism,rashidinejad2021bridging}。这给出一个可操作的判断：如果数据里
+没有任何一条轨迹到达目标附近，任何离线算法都无法学出到达目标的策略；覆盖足够时，
+算法的差别才显现。Schweighofer 等人用“轨迹质量”和“状态覆盖”两个指标刻画
+D4RL 式数据集，并发现覆盖度高的数据上 offline RL 优于行为克隆，质量高、覆盖低的数据
+上行为克隆更稳\citep{schweighofer2022dataset,kumar2022should}。
+
+在 PointMass Medium 上，可以直接用作业输出的 \texttt{curr\_state\_density.png}
+检查覆盖。IQL 的随机探索密度集中在起点附近，RND 扩展到迷宫远端，IQL 的回报相应
+高出 $30$ 以上。我们让 CQL 真正使用探索数据后得到一组更有意思的对照
+（Medium，各 $6$ 个种子）：专家数据上 $\alpha=0$ 全部失败（$-150$），$\alpha=0.1$ 约
+$-68$，与专家控制器自身的 $-67$ 持平；均匀随机数据上 $\alpha=0$ 的离线 DQN 也能学到
+约 $-52$，$\alpha=0.1$ 达到 $-34$，明显超过专家；RND 数据上 $\alpha=1$ 全部失败，因为
+强保守把策略拉向偏向“新奇”的探索行为。结论：保守系数要与数据的行为策略一起选。
+
+\section{离散动作 CQL}
+离散动作下，CQL 的正则可以精确计算\citep{kumar2020cql}：
+\begin{equation}
+\mathcal{L}=\mathcal{L}_{\mathrm{TD}}+\alpha\,\mathbb{E}_{s\sim\mathcal{D}}\Bigl[
+\log\textstyle\sum_a e^{Q(s,a)}-\mathbb{E}_{a\sim\mathcal{D}}Q(s,a)\Bigr].
+\end{equation}
+第一项是软最大值，压低所有动作；第二项抬高数据动作。最优点上，分布外动作的 Q 值
+被压到数据动作以下，策略改进就不会选到它们。实现要点：
+\begin{itemize}
+\item logsumexp 用 \texttt{torch.logsumexp}，不要手写 \texttt{log(sum(exp))}；
+\item 第二项取的是 $Q(s,a_{\text{data}})$，不是 $\max_a Q$；
+\item 日志里同时记录 $\log\sum e^{Q}$ 与 $Q(s,a_{\text{data}})$，两者之差就是
+“分布外间隙”，是判断正则是否生效的最直接指标。
+\end{itemize}
+
+\paragraph{$\alpha=0$ 意味着什么。}正则消失，剩下的是在固定缓冲区上训练的 double DQN。
+数据只覆盖部分动作时，$\max_a Q(s',a)$ 会挑中没有被数据约束的动作，误差经备份传回
+\citep{fujimoto2019bcq,kumar2019bear}。作业的专家数据上，$\alpha=0$ 的六个种子回报全部是
+$-150$，即 episode 长度上限。数据动作的 Q 值约 $-1.0$，而每步奖励 $-1$、到达需要几十步，
+显然是过估计；分布外间隙为 $1.91$，$\alpha=0.1$ 时降到 $0.48$，$\alpha=3$ 时为 $0.12$。
+
+\paragraph{$\alpha$ 的取值。}$\alpha$ 过大时 Q 被压向行为策略的价值，CQL 退化为
+加权的行为克隆，回报趋于数据质量；过小时外推重新出现。原论文还给出
+Lagrangian 版本，让 $\alpha$ 自适应地把间隙维持在阈值 $\tau$\citep{kumar2020cql}。
+后续工作指出 CQL 在数据覆盖好的区域过于保守，MCQ 只对分布外动作施加温和的
+伪目标\citep{lyu2022mcq}，EDAC 用 Q 集成的不确定性代替显式正则\citep{an2021edac}，
+Cal-QL 校准保守价值以便在线微调\citep{nakamoto2023calql}。
+
+\section{IQL 与 expectile}
+IQL 用 expectile 回归拟合 $V(s)$\citep{kostrikov2022iql,newey1987expectile}：
+\begin{equation}
+L_V=\mathbb{E}_{(s,a)\sim\mathcal{D}}\bigl[|\zeta-\mathbb{1}(u<0)|\,u^2\bigr],
+\quad u=Q(s,a)-V(s),
+\end{equation}
+Q 的目标为 $r+\gamma(1-d)V(s')$，策略用 AWR 抽取\citep{peng2019awr,nair2020awac}：
+$\exp(A/\lambda)$ 加权的对数似然。$\zeta=0.5$ 时 $V$ 是行为策略的期望价值，等价于
+SARSA；$\zeta\to1$ 时 $V$ 逼近数据支撑内的最大 Q，接近 in-sample 的 Q-learning。
+所有更新只用数据中出现过的动作，因此不会外推到分布外动作。SQL/EQL 把这一思路
+推广为隐式价值正则\citep{xu2023sql}，XQL 用 Gumbel 回归达到类似效果
+\citep{garg2023xql}。
+
+\paragraph{为什么 $\zeta$ 不是越大越好。}$\zeta$ 越大，$V$ 越依赖少数高价值样本，
+方差越大；在随机环境中还会对“运气好”的转移过度乐观。作业中 Easy 环境的
+$\zeta$ 差别不大，因为数据已经覆盖到目标；Medium 环境中 $\zeta$ 的影响更明显。
+
+\section{工程清单}
+\begin{itemize}
+\item 先看数据：状态密度图、到达目标的轨迹数、平均回报。覆盖不够时不要调算法。
+\item CQL：监控分布外间隙与数据 Q 值。间隙趋于 $0$ 且回报差，说明 $\alpha$ 太小；
+数据 Q 值远低于真实回报，说明 $\alpha$ 太大。
+\item IQL：$V$ 损失与 Q 损失应同时下降；优势的尺度决定 AWR 权重，必要时截断
+$\exp(A/\lambda)$。
+\item 多种子：PointMass 的回报是“到达/未到达”的混合，三个种子的方差很大，要报告
+逐种子结果\citep{agarwal2021precipice}。
+\item 区分 offline 与 offline-to-online：缓冲区是否在利用阶段继续增长。
+\end{itemize}
+
+\section{追问清单}
+\begin{enumerate}
+\item 为什么同样的 CQL 在 RND 数据上更好？如果给随机探索 $10$ 倍步数呢？
+\item 离散动作 CQL 的正则与 softmax 交叉熵有什么关系？（$\log\sum e^{Q}-Q(s,a)$
+正是以 Q 为 logits 的交叉熵。）
+\item $\alpha=0$ 的 CQL 与行为克隆谁更好？在什么数据上？
+\item IQL 的 $\zeta$ 与 CQL 的 $\alpha$ 分别控制哪一类误差？
+\item 如果允许在线微调，CQL 的保守价值会带来什么问题？\citep{nakamoto2023calql}
+\item 为什么 RND 对 noisy TV 鲁棒？在什么环境里它仍然会失效？
+\end{enumerate}
+
+\bibliographystyle{plainnat}
+\bibliography{../references}
+
+\end{document}
