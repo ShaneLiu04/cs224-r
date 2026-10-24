@@ -7,7 +7,12 @@
 > **可复现实验卡片**。面向「能推导、能比较、能实现」的面试与科研复习方式组织。
 
 > 本项目与 Stanford University 及 CS224R 课程团队无隶属关系。官方材料版权归原作者所有，
-> 本仓库仅作个人学习记录；**不包含任何作业答案**，详见 [学术诚信](#引用与学术诚信)。
+> 本仓库仅作个人学习与求职知识整理；`solutions/` 中的个人实现**不应被正在修读的学生参考或提交**，
+> 详见 [学术诚信](#引用与学术诚信)。
+>
+> 面试准备入口：[项目作品集（STAR）](interview/PORTFOLIO.md) ·
+> [工程与调试手册](interview/ENGINEERING.md) · [补充题库](interview/QUESTION-BANK.md)。
+> 全部测试：`./scripts/run-all-tests.ps1`。
 
 ---
 
@@ -24,7 +29,7 @@ W&B、PPO/IQL/RLOO）。本仓库把三件事放在一起：
    公式可直接手推，例如 policy gradient 的 causality 化简、AWR/AWAC 与 IQL 的
    expectile 设计、DPO 的隐式奖励推导、GAE 的递推；
 3. **作业可落地**：每份作业给出 TODO 地图、调试顺序、常见 bug 与验收指标，
-   并在 `solutions/` 留出你自己的实现工作区。
+   `solutions/` 收录作者的完整实现、多种子实验、报告与面试总结（见下文各「完整复现」节）。
 
 ---
 
@@ -215,9 +220,10 @@ materials/                   # compute guide、exam review、TA section、项目
 notes/                       # 18 讲原创中文笔记 + 术语表 + 阅读路线
 experiments/                 # 官方题目索引、论文/工具导读、社区资料、实验卡片
 resources/                   # 官方/社区资源索引与版本差异
-solutions/                   # 你自己的实现工作区（默认空，避免公开答案）
+solutions/                   # 个人实现：2026 HW1–HW3 + Default Project，2025 HW3–HW4
+interview/                   # STAR 作品集、工程调试手册、补充题库
 templates/                   # 笔记、作业 writeup、实验记录模板
-scripts/                     # 材料同步与仓库完整性检查脚本
+scripts/                     # 材料同步、完整性检查、run-all-tests.ps1
 PROGRESS.md                  # 学习进度
 UPSTREAM.md                  # 官方快照来源、commit、版权说明
 VERIFICATION.md              # 材料完整性核对
@@ -339,13 +345,28 @@ RLOO 的两个种子和 120 步修正运行都没有在 pass@8 上稳定超过 S
 该目录包含个人作业实现，仅用于自学与求职知识整理。正在修读课程的学习者应遵守课程
 honor code，不应直接使用或公开提交其中的 solution。
 
+## Spring 2025 HW3 / HW4 完整复现
+
+2026 版没有 CQL、HER 与 meta-RL，因此补做 2025 版的这两份作业：
+
+- [HW3 IQL / CQL + 探索数据](solutions/spring2025/homework3-offline-rl/README.md)：
+  发现 starter 的 CQL 数据采集器其实是 oracle，新增 `--behavior explore` 后，
+  IQL 偏好 RND 数据（−50.9 vs −90.7），CQL 偏好随机数据（α=0.1 时 −34.3±6.1）；
+- [HW4 HER + RL² vs DREAM](solutions/spring2025/homework4-goal-meta-rl/README.md)：
+  HER 把 25-bit flip 从 0 提到 1.0，Sawyer 从 0.547 提到 0.994；DREAM 0.696 接近最优 0.7，
+  RL² 只有 0.143。
+
+![CQL 数据来源](solutions/spring2025/homework3-offline-rl/artifacts/figures/hw3_fig8_cql_data_source.png)
+
+![HER bit-flip](solutions/spring2025/homework4-goal-meta-rl/artifacts/figures/hw4_fig1_bitflip_success.png)
+
 ---
 
 ## 引用与学术诚信
 
 - 官方材料按其原始版权保留，来源固定记录在 [UPSTREAM.md](UPSTREAM.md)；
 - 第三方笔记与实现只在 `resources/` 中链接，不复制内容；
-- **本仓库不包含作业答案**；`solutions/` 默认为空，用于记录你自己的实现；
+- `solutions/` 是作者在修完/旁听后完成的个人实现，用于求职展示，不是课程提交；
 - CS224R honor code：禁止参考答案、禁止公开自己的作业解答。如果你正在修读该课，
   请勿公开推送 `solutions/`，也请勿把本仓库笔记当作提交材料；
 - 每一讲笔记末尾标注了参考的官方材料与论文，引用任何思路时请注明来源。
