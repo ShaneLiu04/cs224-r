@@ -56,21 +56,91 @@ bit-flip 的奖励只有 0 和 −1。无 hindsight 时 25-bit 成功率是 0。
 | --- | --- |
 | 90 秒故事、公式、错答 | [`interview/`](interview/README.md) |
 | 一讲的推导和反例 | [`notes/`](notes/README.md)，从 [L1](notes/lecture-01-intro-mdps.md) 到 [L18](notes/lecture-18-frontiers.md) |
-| 多种子曲线和两份报告 | [`solutions/`](solutions/README.md) |
+| 某份作业的代码、测试、图和报告 | [按作业查](#作业实现)，总目录在 [`solutions/`](solutions/README.md) |
 | 官方题面和 starter | [`assignments/`](assignments/spring2026/)，这里不改 starter |
 | 幻灯片 | [2026](slides/spring2026/) 17 讲，[2025](slides/spring2025/) 19 讲，[录像](https://www.youtube.com/playlist?list=PLoROMvodv4rPwxE0ONYRa_itZFdaKCylL)，[2023](slides/spring2023/) |
 | 论文和工具索引 | [`experiments/`](experiments/README.md) |
 
-| 主题 | 题面 | 实现 |
-| --- | --- | --- |
-| 模仿：BC、flow matching、DAgger | [HW1](assignments/spring2026/homework1-imitation/) | [5 个种子](solutions/spring2026/homework1-imitation/README.md) |
-| 在线：PPO、GAE、高 UTD | [HW2](assignments/spring2026/homework2-online-rl/) | [样本效率](solutions/spring2026/homework2-online-rl/README.md) |
-| 离线：AWAC、IQL、拼接 | [HW3](assignments/spring2026/homework3-offline-rl/) | [IQL 高于最好轨迹 −46](solutions/spring2026/homework3-offline-rl/README.md) |
-| 后训练：SFT、IPO、RLOO、GRPO | [Default Project](assignments/spring2026/default-project/) | [扩展评测](solutions/spring2026/default-project/README.md) |
-| CQL 与探索数据 | [2025 HW3](assignments/spring2025/) | [oracle 采集器](solutions/spring2025/homework3-offline-rl/README.md) |
-| HER、RL²、DREAM | [2025 HW4](assignments/spring2025/) | [0 到 1，0.70 对 0.14](solutions/spring2025/homework4-goal-meta-rl/README.md) |
+## 作业实现
 
-2025 的两份作业补的是 2026 大纲里没有的 CQL、HER 和 meta-RL。上游 commit 在 [UPSTREAM.md](UPSTREAM.md)。本地可以直接跑的是 HW1 的 Flappy Bird；其余实验的命令写在对应 README 里。
+官方 starter 在 `assignments/`，不在这里改。下表是个人实现。2025 的两份补的是 2026 大纲里没有的 CQL、HER 和 meta-RL。
+
+| 作业 | 代码、测试、图、报告 | 能引用的结果 |
+| --- | --- | --- |
+| [2026 HW1 模仿](#2026-hw1-模仿) | [代码](solutions/spring2026/homework1-imitation/code/) · [测试](solutions/spring2026/homework1-imitation/code/tests/) · [图](solutions/spring2026/homework1-imitation/artifacts/figures/) · [说明](solutions/spring2026/homework1-imitation/README.md) · [作业](solutions/spring2026/homework1-imitation/reports/assignment_report/main.pdf) · [面试](solutions/spring2026/homework1-imitation/reports/interview_guide/main.pdf) | 5 个种子。hard 上 MSE 把双峰专家动作压到条件均值；flow matching 保留两个峰；DAgger 在策略访问的状态上重新问专家 |
+| [2026 HW2 在线](#2026-hw2-在线) | [代码](solutions/spring2026/homework2-online-rl/code/) · [测试](solutions/spring2026/homework2-online-rl/code/tests/) · [图](solutions/spring2026/homework2-online-rl/artifacts/figures/) · [说明](solutions/spring2026/homework2-online-rl/README.md) · [作业](solutions/spring2026/homework2-online-rl/reports/assignment_report/main.pdf) · [面试](solutions/spring2026/homework2-online-rl/reports/interview_guide/main.pdf) | PPO 3 个种子、100 万帧。高 UTD 是 10 个 critic、UTD=5、5 个种子。正的 step reward 会让 Gridworld 故意不终止 |
+| [2026 HW3 离线](#2026-hw3-离线) | [代码](solutions/spring2026/homework3-offline-rl/code/) · [测试](solutions/spring2026/homework3-offline-rl/code/tests/) · [图](solutions/spring2026/homework3-offline-rl/artifacts/figures/) · [说明](solutions/spring2026/homework3-offline-rl/README.md) · [作业](solutions/spring2026/homework3-offline-rl/reports/assignment_report/main.pdf) · [面试](solutions/spring2026/homework3-offline-rl/reports/interview_guide/main.pdf) | u-maze：AWAC −329.9±93.0，IQL ζ=0.9 为 −189.9±29.6，ζ=0.2 为 −531.3±25.2。拼接：数据集最好轨迹 −46，IQL −30.8±3.0，Filtered BC −59.4±0.9 |
+| [Default Project](#default-project-后训练) | [代码](solutions/spring2026/default-project/code/) · [测试](solutions/spring2026/default-project/tests/) · [扩展图](solutions/spring2026/default-project/artifacts/extension/figures/) · [说明](solutions/spring2026/default-project/README.md) · [作业](solutions/spring2026/default-project/reports/assignment_report/main.pdf) · [面试](solutions/spring2026/default-project/reports/interview_guide/main.pdf) | 参考策略处 IPO 损失是 25。长 think SFT 留出 pass@1 为 0.272、pass@16 为 0.662；Dr. GRPO 的 pass@1 是 0.540，pass@16 仍在 0.66 附近 |
+| [2025 HW3 探索数据](#2025-hw3-探索数据) | [代码](solutions/spring2025/homework3-offline-rl/code/) · [测试](solutions/spring2025/homework3-offline-rl/tests/) · [图](solutions/spring2025/homework3-offline-rl/artifacts/figures/) · [说明](solutions/spring2025/homework3-offline-rl/README.md) · [作业](solutions/spring2025/homework3-offline-rl/reports/assignment_report/main.pdf) · [面试](solutions/spring2025/homework3-offline-rl/reports/interview_guide/main.pdf) | `--use_rnd` 不改变数据。真实探索下 IQL ζ=0.7：RND −50.9，随机 −90.7。CQL α=0.1：随机 −34.3±6.1，RND −67.6 |
+| [2025 HW4 目标与元学习](#2025-hw4-目标与元学习) | [HER 代码](solutions/spring2025/homework4-goal-meta-rl/code/goal_conditioned_rl/) · [meta 代码](solutions/spring2025/homework4-goal-meta-rl/code/meta_rl/) · [测试](solutions/spring2025/homework4-goal-meta-rl/tests/) · [图](solutions/spring2025/homework4-goal-meta-rl/artifacts/figures/) · [说明](solutions/spring2025/homework4-goal-meta-rl/README.md) · [作业](solutions/spring2025/homework4-goal-meta-rl/reports/assignment_report/main.pdf) · [面试](solutions/spring2025/homework4-goal-meta-rl/reports/interview_guide/main.pdf) | 25-bit 无 HER 为 0，三种重标记到 1.0。Sawyer random 重标记 0.994±0.006。DREAM 0.696±0.007，RL² 0.143±0.073 |
+
+### 2026 HW1 模仿
+
+BC、flow matching、DAgger，Flappy Bird 的 easy / hard。5 个种子，每个方法 50 个评估 episode，另有 Euler 步数和 action chunk 重规划消融。
+
+```bash
+cd solutions/spring2026/homework1-imitation
+PYTHONPATH=code python -m pytest -q code/tests
+```
+
+题面在 [assignments/spring2026/homework1-imitation](assignments/spring2026/homework1-imitation/)。
+
+### 2026 HW2 在线
+
+表格 Q-learning、PPO+GAE、带 critic ensemble 的 off-policy actor-critic。PPO 为 100 万帧、3 个种子。对照是 2 critic / UTD=1，高 UTD 是 10 critic / UTD=5、5 个种子。GAE 扫了 λ ∈ {0, 0.95, 0.99, 1}。
+
+```bash
+cd solutions/spring2026/homework2-online-rl/code
+python -m pytest -q
+```
+
+题面在 [assignments/spring2026/homework2-online-rl](assignments/spring2026/homework2-online-rl/)。
+
+### 2026 HW3 离线
+
+AWAC 与 IQL，D4RL AntMaze 的 u-maze 和 medium，外加 PointMass 拼接。medium 用修复后的 `antmaze-medium-diverse-v2`，因为公开的 v0 HDF5 是截断的。ζ=0.9 在 u-maze 上优于 0.2，medium 和拼接沿用 0.9。
+
+```bash
+cd solutions/spring2026/homework3-offline-rl/code
+python -m pytest -q
+```
+
+题面在 [assignments/spring2026/homework3-offline-rl](assignments/spring2026/homework3-offline-rl/)。
+
+### Default Project 后训练
+
+Countdown 上的 SFT、IPO/DPO、RLOO，以及扩展里的长 think SFT、GRPO、Dr. GRPO、课程学习和验证器选择。短程实验的图在 `artifacts/figures/`，扩展评测在 `artifacts/extension/`。`β=0.1` 时，策略等于参考策略的 IPO 损失必须是 25。
+
+```bash
+cd solutions/spring2026/default-project
+python -m pytest -q tests
+```
+
+题面在 [assignments/spring2026/default-project](assignments/spring2026/default-project/)。
+
+### 2025 HW3 探索数据
+
+IQL、CQL 和 RND。`explore_or_exploit_agent.step_env` 原本无论 `--use_rnd` 与否都调用最短路贪心。`--behavior explore` 才按 RND 或 ε-随机策略采集。oracle 数据上 α=0 的 CQL 在 Medium 全部是 −150。
+
+```bash
+cd solutions/spring2025/homework3-offline-rl
+python -m pytest -q tests
+```
+
+题面在 [assignments/spring2025](assignments/spring2025/)。
+
+### 2025 HW4 目标与元学习
+
+goal-conditioned DQN 上的 final / future / random 重标记，环境是 bit-flip 和 Sawyer reach。meta-RL 比较 RL² 和 DREAM，DREAM 另有每步代价 c=0 的消融。15-bit 上 k ∈ {1, 2, 4, 8} 没有差别。
+
+```bash
+cd solutions/spring2025/homework4-goal-meta-rl
+python -m pytest -q tests
+```
+
+题面在 [assignments/spring2025](assignments/spring2025/)。
+
+上游 commit 在 [UPSTREAM.md](UPSTREAM.md)。六套测试一起跑：`./scripts/run-all-tests.ps1`。
 
 ## 许可
 
