@@ -79,7 +79,7 @@ python gridworld_q_learning.py
 ## AutoDL 复现
 
 ```bash
-cd /root/autodl-tmp/cs229-r-hw2/workspace
+cd /root/autodl-tmp/cs224r-hw2/workspace
 bash setup_autodl.sh
 bash launch_experiments.sh
 ```

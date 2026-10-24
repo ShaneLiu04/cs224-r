@@ -10,7 +10,7 @@
   },
   "config": {
     "seed": 55,
-    "output": "/root/autodl-tmp/cs229-r-hw1/experiments/seed_55",
+    "output": "/root/autodl-tmp/cs224r-hw1/experiments/seed_55",
     "expert_episodes": 500,
     "eval_episodes": 50,
     "bc_epochs": 100,

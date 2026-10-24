@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT=/root/autodl-tmp/cs229-r-hw2
+ROOT=/root/autodl-tmp/cs224r-hw2
 ENV=/root/miniconda3
 
 export DEBIAN_FRONTEND=noninteractive

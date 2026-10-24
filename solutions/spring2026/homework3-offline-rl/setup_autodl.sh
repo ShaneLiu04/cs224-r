@@ -7,7 +7,7 @@
 # and MUJOCO_PY_MUJOCO_PATH=/root/.mujoco/mujoco210.
 set -euo pipefail
 
-ROOT=/root/autodl-tmp/cs229-r-hw3
+ROOT=/root/autodl-tmp/cs224r-hw3
 ENV=/root/autodl-tmp/envs/hw3
 PIP_INDEX=${PIP_INDEX:-https://pypi.tuna.tsinghua.edu.cn/simple}
 PIP="--index-url $PIP_INDEX --extra-index-url https://pypi.org/simple"

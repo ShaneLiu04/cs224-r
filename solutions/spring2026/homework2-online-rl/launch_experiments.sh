@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT=/root/autodl-tmp/cs229-r-hw2
+ROOT=/root/autodl-tmp/cs224r-hw2
 CODE="$ROOT/workspace/code"
 ENV=/root/miniconda3
 RUNS="$ROOT/runs"
