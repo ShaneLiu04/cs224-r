@@ -23,8 +23,10 @@
   [README](solutions/spring2026/homework3-offline-rl/README.md)
 - [x] Default Project 基础：SFT、IPO/DPO、RLOO、无偏 pass@k，双报告 —
   [README](solutions/spring2026/default-project/README.md)
-- [ ] Default Project 扩展：长/短 SFT、官方规模 RLOO、课程学习、GRPO/Dr. GRPO、验证器重排、多种子
-- [ ] Default Project poster
+- [x] Default Project 扩展：长/短 SFT、官方规模 RLOO、课程学习、GRPO/Dr. GRPO、验证器重排、多种子 —
+  [README](solutions/spring2026/default-project/README.md)
+- [x] Default Project poster —
+  [poster](solutions/spring2026/default-project/reports/poster/main.pdf)
 
 ## Spring 2025（补做 2026 没有的主题）
 
@@ -35,4 +37,4 @@
 
 ## 后续
 
-- [ ] 2025 → 2026 作业接口差异整理（见 `resources/versions.md`）
+- [x] 2025 → 2026 作业接口差异整理（见 `resources/versions.md`）

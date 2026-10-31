@@ -157,8 +157,12 @@ def fig_lengths(eval_dir, evals, out, split="heldout"):
     fig, axes = plt.subplots(1, len(models), figsize=(3.2 * len(models), 2.8), sharey=True)
     axes = np.atleast_1d(axes)
     bins = np.linspace(0, 1024, 33)
+    drawn = 0
     for ax, m in zip(axes, models):
         rows = samples(eval_dir, m, split)
+        if not rows:
+            continue
+        drawn += 1
         ok = [l for r in rows for l, c in zip(r["lengths"], r["correct"]) if c]
         bad = [l for r in rows for l, c in zip(r["lengths"], r["correct"]) if not c]
         ax.hist(bad, bins=bins, alpha=0.6, density=True, label=f"wrong (n={len(bad)})", color="#d62728")
@@ -166,6 +170,9 @@ def fig_lengths(eval_dir, evals, out, split="heldout"):
         ax.set_title(LABEL.get(family(m), m), fontsize=8)
         ax.set_xlabel("response tokens")
         ax.legend(fontsize=6)
+    if drawn == 0:
+        plt.close(fig)
+        return
     axes[0].set_ylabel("density")
     save(fig, out, "ext_fig5_lengths")
 
