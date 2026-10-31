@@ -59,6 +59,7 @@
 \providecommand{\PassRlooLongOne}{--}\providecommand{\PassRlooLongFour}{--}
 \providecommand{\PassRlooLongEight}{--}
 \InputIfFileExists{../results_macros.tex}{}{}
+\InputIfFileExists{../../artifacts/extension/extension_macros.tex}{}{}
 
 \title{\vspace{-1.2em}\textbf{Countdown 上的后训练：\\
 SFT、IPO 与 RLOO}}
@@ -337,6 +338,63 @@ pass@1 上升而 pass@8 不上升，意味着单次采样更常碰对，八次�
 的概率没有一起变好。四十到一百二十步、每步四个提示，不足以把这种差别从采样噪声里分开。
 官方设置是 batch $128$、组大小 $8$、累积 $128$、$100$ 步。这里的在线批远小于那个设置。
 结论只覆盖这个预算：SFT 提供格式，短程 IPO 与 RLOO 没有给出稳定的 pass@8 增益。
+
+\section{扩展：长 think、优势归一化与验证器重排}
+上一节的在线批是每步 $4$ 个提示、最多 $128$ 个新 token，SFT 目标是一行等式。
+扩展换成数据集里的长 \texttt{<think>}，并用 vLLM 做 on-policy 采样。
+策略仍是 Qwen2.5-0.5B。留出集 $500$ 题、测试集 $50$ 题，每题 $16$ 条，
+温度 $0.6$、top-$p$ $0.95$。在线训练每步 $32$ 个提示、组大小 $8$、$100$ 步，
+学习率 $10^{-5}$，熵系数和 KL 系数都是 $0.001$。三种优势共用同一条序列对数概率之和，
+差别只在组内统计：
+\begin{align}
+\hat A^{\mathrm{RLOO}}_i &= r_i-\frac{1}{K-1}\sum_{j\neq i}r_j,\\
+\hat A^{\mathrm{GRPO}}_i &= (r_i-\bar r)/(\sigma+\epsilon),\\
+\hat A^{\mathrm{Dr}}_i &= r_i-\bar r.
+\end{align}
+Dr.\ GRPO 去掉的是标准差缩放\citep{shao2024deepseekmath}。本实现没有再把损失按长度平均，
+所以它不是``除以回答长度''的那一项消融。课程学习把前一半提示换成三数字题，后一半换成四数字题。
+验证器重排发生在采样之后：在 $k$ 条回答里用 Countdown 检查器挑选，
+对照是均匀抽取、多数投票、最大平均对数概率，以及只检查数字是否用全。
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{../../artifacts/extension/figures/ext_fig1_passk_heldout.png}
+\caption{留出集 $500$ 题的 pass@$k$。长 think SFT 把 pass@16 抬到
+$\xSftLongHeldoutPassatos$。其后的在线方法把 pass@1 抬到 $0.52$ 附近，
+pass@16 仍停在同一量级。短等式上的 RLOO 把 pass@16 压到
+$\xRlRlooShortHeldoutPassatos$。}
+\label{fig:extpass}
+\end{figure}
+
+长 think SFT 的留出 pass@1 是 $\xSftLongHeldoutPassato$，pass@16 是
+$\xSftLongHeldoutPassatos$。短等式 SFT 是 $\xSftShortHeldoutPassato$ 和
+$\xSftShortHeldoutPassatos$。从长 think 出发，RLOO 三个种子的 pass@1 是
+$\xRlRlooLongHeldoutPassato$，pass@16 是 $\xRlRlooLongHeldoutPassatos$。
+GRPO 是 $\xRlGrpoLongHeldoutPassato$ / $\xRlGrpoLongHeldoutPassatos$，
+Dr.\ GRPO 是 $\xRlDrgrpoLongHeldoutPassato$ / $\xRlDrgrpoLongHeldoutPassatos$，
+课程学习是 $\xRlCurrLongHeldoutPassato$ / $\xRlCurrLongHeldoutPassatos$，
+从官方 SFT 检查点出发的 RLOO 是 $\xRlRlooOfficialHeldoutPassato$ /
+$\xRlRlooOfficialHeldoutPassatos$。宏里的 $\pm$ 是种子间标准差，种子数写在
+\texttt{extension\_macros.tex}。短等式上的 RLOO 留出 pass@1 只有
+$\xRlRlooShortHeldoutPassato$，pass@16 掉到 $\xRlRlooShortHeldoutPassatos$，
+低于它自己的 SFT。在线更新可以收紧分布，也可以把覆盖打掉。
+
+pass@1 从大约 $0.27$ 升到 $0.52$--$0.54$，而 pass@16 仍在 $0.64$--$0.68$。
+这是分布变尖，不是解题覆盖变宽。GRPO 与 Dr.\ GRPO 的差距小于种子标准差能分开的范围时，
+不能把``去掉标准差''说成稳定增益。课程学习没有超过同一预算的普通 RLOO。
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{../../artifacts/extension/figures/ext_fig2_selection_heldout.png}
+\caption{留出集上、预算 $k=16$ 时的选择器。全验证器与 pass@16 重合，
+因为它就是奖励函数。最大平均对数概率低于均匀抽取。}
+\label{fig:select}
+\end{figure}
+
+图~\ref{fig:select} 里的全验证器使用题目给出的目标和数字，不需要额外标注。
+它在 $k$ 条里挑出正确等式，所以 $k=16$ 时等于 pass@16。最大平均对数概率会偏向短而流利的错答案。
+多数投票和数字检查介于二者之间。测试时多采样再检查，收回的是 pass@16 里已经存在的解，
+不是训练没覆盖到的解。
 
 \section{局限}
 SFT 目标是搜索器写出的一行等式，不是数据集里那种多步 \texttt{<think>}。

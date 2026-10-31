@@ -38,6 +38,7 @@
 \providecommand{\PassRlooKEightSeedOneEight}{--}
 \providecommand{\PassRlooKTwoEight}{--}\providecommand{\PassRlooNoKlEight}{--}
 \providecommand{\PassRlooStopOne}{--}\providecommand{\PassRlooLongOne}{--}
+\InputIfFileExists{../../artifacts/extension/extension_macros.tex}{}{}
 \providecommand{\PassRlooLongEight}{--}\providecommand{\PassIpoEight}{--}
 \InputIfFileExists{../results_macros.tex}{}{}
 
@@ -288,11 +289,24 @@ $0.5$B 模型的解码利用率可以不高，显存却会在错误的注意力�
 准确率仍在一半附近，所以这一阶段没有可报告的偏好增益。pass@8 上 IPO 是
 $\PassIpoEight$，要和 SFT 的 $\PassSftEight$ 一起看 $n$ 的差别。
 
-图~\ref{fig:pass} 回答``在线更新有没有超过 SFT''。在本文的步数、组大小和种子数下，
-没有一个检查点在 pass@8 上稳定高于其他检查点。$K=8$ 优于 $K=2$ 这个方向在
-pass@8 上出现了，但是两个种子的 $K=8$ 自己也不重合。写进简历或面试答案时，
-范围是：在 $0.5$B、数十到一百二十步、每步四个提示的 Countdown 上，
-SFT 负责把奖励从全零变成有方差，随后的 IPO 与 RLOO 没有给出可重复的 pass@8 提升。
+图~\ref{fig:pass} 回答``在线更新有没有超过 SFT''。在短等式、每步四个提示、
+最多一百二十步这个预算下，没有一个检查点在 pass@8 上稳定高于其他检查点。
+写进面试答案时要带上预算：SFT 负责把奖励从全零变成有方差，随后的短程 IPO 与 RLOO
+没有给出可重复的 pass@8 提升。
+
+换成长 \texttt{<think>}、每步 $32$ 个提示、$100$ 步、vLLM 采样之后，结论换成另一句。
+留出集 $500$ 题、每题 $16$ 条：长 think SFT 的 pass@1 是 $\xSftLongHeldoutPassato$，
+pass@16 是 $\xSftLongHeldoutPassatos$。RLOO、GRPO 和 Dr.\ GRPO 把 pass@1 抬到
+$\xRlRlooLongHeldoutPassato$、$\xRlGrpoLongHeldoutPassato$ 和
+$\xRlDrgrpoLongHeldoutPassato$，pass@16 仍是
+$\xRlRlooLongHeldoutPassatos$、$\xRlGrpoLongHeldoutPassatos$ 和
+$\xRlDrgrpoLongHeldoutPassatos$。面试里把这说成分布变尖：小 $k$ 上升，大 $k$ 没有拉开。
+短等式上的 RLOO 则把 pass@16 打到 $\xRlRlooShortHeldoutPassatos$。
+同一套损失，初始化格式不同，覆盖可以变好也可以变坏。
+GRPO 除以组内标准差，Dr.\ GRPO 只减均值。本实现两边都用序列对数概率之和，
+没有再做长度平均，所以不能把差距说成长度归一化的效果。
+测试时用题目自带的检查器在 $16$ 条里重排，收回的是 pass@16 已经覆盖的解。
+最大平均对数概率低于均匀抽一条。
 
 \section{岗位上的回答方式}
 \textbf{奖励模型还要不要。}
